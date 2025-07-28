@@ -65,10 +65,10 @@ struct UserProfileView: View {
                             Button(role: .destructive) {
                                 do {
                                     try Auth.auth().signOut()
-                                    profileManager.reset()
-                                    workoutStorage.reset()
-                                    workoutTemplateStorage.reset()
-                                    achievementManager.reset()
+                                    DispatchQueue.main.async {
+                                        profileManager.reset()
+                                        achievementManager.reset()
+                                    }
                                     // Optionally sign in anonymously again to keep app usable
                                     Auth.auth().signInAnonymously { result, error in
                                         if let error = error {

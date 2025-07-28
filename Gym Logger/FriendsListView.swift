@@ -38,6 +38,7 @@ struct FriendsListView: View {
                         }
                     }
                 }
+                
                 // ➕ Add Friend
                 Section(header: Text("Add Friend")) {
                     Button("Search Users") {

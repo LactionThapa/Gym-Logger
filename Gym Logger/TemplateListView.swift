@@ -4,10 +4,11 @@ struct TemplateListView: View {
     @EnvironmentObject var templateStorage: WorkoutTemplateStorage
     @EnvironmentObject var workoutStorage: WorkoutStorage
     @EnvironmentObject var profileManager: UserProfileManager
-
+    @EnvironmentObject var authManager: AuthManager
+    
     @State private var editingTemplate: WorkoutTemplate? = nil
     @State private var isEditingActive: Bool = false
-
+    
     var body: some View {
         NavigationStack {
             VStack {
@@ -41,7 +42,7 @@ struct TemplateListView: View {
                     }
                     .padding()
                 }
-
+                
                 NavigationLink(destination: WorkoutBuilderView()) {
                     Label("Create Template", systemImage: "plus")
                         .padding()
@@ -52,11 +53,23 @@ struct TemplateListView: View {
                 .padding()
             }
             .navigationTitle("Workout Templates")
-
+            
             // ✅ Modern way to handle navigation using .navigationDestination
             .navigationDestination(isPresented: $isEditingActive) {
                 if let template = editingTemplate {
                     WorkoutBuilderView(templateToEdit: template)
+                }
+            }
+            .onAppear {
+                if authManager.isLoggedIn {
+                    templateStorage.fetchTemplates()
+                }
+            }
+            .onChange(of: authManager.user) { _ in
+                if authManager.isAnonymous {
+                    templateStorage.reset()
+                } else {
+                    templateStorage.fetchTemplates()
                 }
             }
         }

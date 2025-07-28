@@ -2,8 +2,9 @@ import SwiftUI
 
 struct WorkoutHistoryView: View {
     @EnvironmentObject var workoutStorage: WorkoutStorage
+    @EnvironmentObject var authManager: AuthManager
     @State private var searchText = ""
-
+    
     var filteredWorkouts: [Workout] {
         guard !searchText.isEmpty else { return workoutStorage.history }
         return workoutStorage.history.compactMap { workout in
@@ -18,7 +19,7 @@ struct WorkoutHistoryView: View {
             return nil
         }
     }
-
+    
     var body: some View {
         NavigationStack {
             List {
@@ -71,9 +72,21 @@ struct WorkoutHistoryView: View {
             .toolbar {
                 EditButton()
             }
+            .onAppear {
+                if authManager.isLoggedIn {
+                    workoutStorage.load()
+                }
+            }
+            .onChange(of: authManager.user) { _ in
+                if authManager.isAnonymous {
+                    workoutStorage.reset()
+                } else {
+                    workoutStorage.load()
+                }
+            }
         }
     }
-
+    
     private func deleteWorkout(at offsets: IndexSet) {
         workoutStorage.delete(at: offsets)
     }
