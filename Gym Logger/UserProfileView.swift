@@ -47,6 +47,11 @@ struct UserProfileView: View {
                                         profileManager.fetchUserProfile()
                                         workoutStorage.load()
                                         workoutTemplateStorage.fetchTemplates()
+                                        
+                                        while Auth.auth().currentUser?.uid == nil {
+                                                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s
+                                        }
+                                        achievementManager.loadAchievements()
                                     }
                                 }
                             }

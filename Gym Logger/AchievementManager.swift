@@ -17,7 +17,12 @@ class AchievementManager: ObservableObject {
     }
 
     func loadAchievements() {
-        guard let userID = Auth.auth().currentUser?.uid else { return }
+        guard let userID = Auth.auth().currentUser?.uid else {
+                print("❌ No user ID available when loading achievements.")
+                return
+            }
+        print("📥 Loading achievements for user: \(userID)")
+        listener?.remove() 
 
         listener = db.collection("users")
             .document(userID)
