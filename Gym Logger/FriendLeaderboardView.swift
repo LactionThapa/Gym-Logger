@@ -56,7 +56,13 @@ struct FriendLeaderboardView: View {
                                 xp: data["xp"] as? Int ?? 0
                             )
                         }
-                        .sorted(by: { $0.xp > $1.xp })
+                        .sorted {
+                            if $0.level == $1.level {
+                                return $0.xp > $1.xp
+                            } else {
+                                return $0.level > $1.level
+                            }
+                        }
                     }
                 }
         }
