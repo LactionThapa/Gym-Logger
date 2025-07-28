@@ -11,6 +11,8 @@ struct TemplateDetailView: View {
     @State private var exercises: [Exercise]
     @State private var started = false
     @State private var showConfirmation = false
+    @FocusState private var focusedField: UUID?
+
 
     init(template: WorkoutTemplate) {
         self.template = template
@@ -61,6 +63,14 @@ struct TemplateDetailView: View {
                 dismiss()
             }
         }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    focusedField = nil
+                }
+            }
+        }
     }
 
     // ✅ Extracted helper to simplify the body and avoid compiler issues
@@ -98,6 +108,7 @@ struct TemplateDetailView: View {
                             .keyboardType(.numberPad)
                             .frame(width: 60)
                             .textFieldStyle(.roundedBorder)
+                            .focused($focusedField, equals: exercises[index].sets[j].id)
                     } else {
                         Text("Not Started")
                             .foregroundColor(.gray)

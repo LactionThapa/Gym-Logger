@@ -1,36 +1,52 @@
 import Foundation
 import Combine
+import FirebaseAuth
+import FirebaseFirestore
 
 class AchievementManager: ObservableObject {
     @Published var achievements: [Achievement] = []
+    @Published var unlockedRecently: Achievement? = nil
+
+    private let db = Firestore.firestore()
+    private let collectionKey = "achievements"
+    private var listener: ListenerRegistration?
+    static let sharedInstance = AchievementManager()
 
     init() {
         loadAchievements()
     }
 
     func loadAchievements() {
-        achievements = [
-            Achievement(title: "First Workout",
-                        description: "Log your first workout.",
-                        earned: false,
-                        dateEarned: nil,
-                        imageName: "1.circle"),
-            
-            Achievement(title: "5 Workouts",
-                        description: "Log 5 workouts.",
-                        earned: false,
-                        dateEarned: nil,
-                        imageName: "5.circle"),
-            
-            Achievement(title: "10,000 KG Lifted",
-                        description: "Lift a total of 10,000 kg.",
-                        earned: false,
-                        dateEarned: nil,
-                        imageName: "scalemass"),
-        ]
+        guard let userID = Auth.auth().currentUser?.uid else { return }
+
+        listener = db.collection("users")
+            .document(userID)
+            .collection(collectionKey)
+            .addSnapshotListener { snapshot, error in
+                if let error = error {
+                    print("❌ Failed to load achievements: \(error.localizedDescription)")
+                    self.achievements = self.defaultAchievements() // fallback
+                    return
+                }
+
+                var loaded: [Achievement] = self.defaultAchievements()
+
+                snapshot?.documents.forEach { doc in
+                    if let index = loaded.firstIndex(where: { $0.id == doc.documentID }),
+                       let earned = doc.data()["earned"] as? Bool,
+                       let timestamp = doc.data()["dateEarned"] as? Timestamp {
+                        loaded[index].earned = earned
+                        loaded[index].dateEarned = timestamp.dateValue()
+                    }
+                }
+
+                DispatchQueue.main.async {
+                    self.achievements = loaded
+                }
+            }
     }
 
-    func evaluateAchievements(using workouts: [Workout]) {
+    func evaluateAchievements(using workouts: [Workout], onUnlock: @escaping (Achievement) -> Void) {
         let workoutCount = workouts.count
         let totalWeight = workouts
             .flatMap { $0.exercises }
@@ -39,31 +55,54 @@ class AchievementManager: ObservableObject {
         for i in achievements.indices {
             if achievements[i].earned { continue }
 
+            var shouldUnlock = false
             switch achievements[i].title {
-            case "First Workout":
-                if workoutCount >= 1 {
-                    unlock(&achievements[i])
+                case "First Workout": shouldUnlock = workoutCount >= 1
+                case "5 Workouts":    shouldUnlock = workoutCount >= 5
+                case "10,000 KG Lifted": shouldUnlock = totalWeight >= 10_000
+                default: break
+            }
+
+            if shouldUnlock {
+                achievements[i].earned = true
+                achievements[i].dateEarned = Date()
+                saveAchievementToFirestore(achievements[i])
+
+                // 🔔 Trigger UI popup
+                DispatchQueue.main.async {
+                    self.unlockedRecently = self.achievements[i]
                 }
-            case "5 Workouts":
-                if workoutCount >= 5 {
-                    unlock(&achievements[i])
-                }
-            case "10,000 KG Lifted":
-                if totalWeight >= 10_000 {
-                    unlock(&achievements[i])
-                }
-            default: break
             }
         }
     }
 
-    private func unlock(_ achievement: inout Achievement) {
-        achievement = Achievement(
-            title: achievement.title,
-            description: achievement.description,
-            earned: true,
-            dateEarned: Date(),
-            imageName: achievement.imageName
-        )
+    private func saveAchievementToFirestore(_ achievement: Achievement) {
+        guard let userID = Auth.auth().currentUser?.uid else { return }
+
+        let data: [String: Any] = [
+            "earned": achievement.earned,
+            "dateEarned": achievement.dateEarned ?? FieldValue.serverTimestamp()
+        ]
+
+        db.collection("users")
+            .document(userID)
+            .collection(collectionKey)
+            .document(achievement.id)
+            .setData(data, merge: true)
+    }
+
+    func defaultAchievements() -> [Achievement] {
+        return [
+            Achievement(id: "firstWorkout", title: "First Workout", description: "Log your first workout.", imageName: "1.circle"),
+            Achievement(id: "fiveWorkouts", title: "5 Workouts", description: "Log 5 workouts.", imageName: "5.circle"),
+            Achievement(id: "tenKiloLifted", title: "10,000 KG Lifted", description: "Lift a total of 10,000 kg.", imageName: "scalemass")
+        ]
+    }
+    func reset() {
+        self.achievements = self.defaultAchievements()
+    }
+
+    deinit {
+        listener?.remove()
     }
 }

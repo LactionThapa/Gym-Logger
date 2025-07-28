@@ -22,6 +22,11 @@ struct TemplateManagerView: View {
         }
         .navigationTitle("Templates")
         .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button("Back") {
+                    dismiss()
+                }
+            }
             ToolbarItem(placement: .navigationBarTrailing) {
                 EditButton()
             }

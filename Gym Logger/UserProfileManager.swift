@@ -5,54 +5,80 @@ import FirebaseStorage
 import SwiftUI
 
 class UserProfileManager: ObservableObject {
-    @Published var profile = UserProfile(profileName: "", xp: 0, profilePicURL: nil, achievements: [])
-
+    @Published var profile = UserProfile()
+    
     private let db = Firestore.firestore()
     private let storage = Storage.storage()
     private var listener: ListenerRegistration?
-
+    
+    var userID: String? {
+            Auth.auth().currentUser?.uid
+        }
+    
     init() {
         signInIfNeeded()
         fetchUserProfile()
     }
-
+    
     private func userRef() -> DocumentReference? {
         guard let uid = Auth.auth().currentUser?.uid else { return nil }
         return db.collection("users").document(uid)
     }
-
+    
     func fetchUserProfile() {
         guard let ref = userRef() else { return }
-
+        
         listener = ref.addSnapshotListener { snapshot, error in
-            if let data = snapshot?.data(),
-               let profile = try? Firestore.Decoder().decode(UserProfile.self, from: data) {
+            guard let data = snapshot?.data() else { return }
+            
+            if let decoded = try? Firestore.Decoder().decode(UserProfile.self, from: data) {
                 DispatchQueue.main.async {
-                    self.profile = profile
+                    self.profile = decoded
                 }
             }
         }
     }
-
+    
     func updateName(_ name: String) {
-        userRef()?.updateData(["profileName": name])
+        profile.profileName = name
+        save()
     }
-
+    
     func addXP(_ amount: Int) {
-        userRef()?.updateData(["xp": FieldValue.increment(Int64(amount))])
+        profile.xp += amount
+        while profile.xp >= requiredXPForNextLevel {
+            profile.xp -= requiredXPForNextLevel
+            profile.level += 1
+        }
+        save()
     }
-
+    var currentXPIntoLevel: Int {
+        var xpLeft = profile.xp
+        var l = 1
+        while xpLeft >= Int(100 * pow(1.5, Double(l - 1))) {
+            xpLeft -= Int(100 * pow(1.5, Double(l - 1)))
+            l += 1
+        }
+        return xpLeft
+    }
+    
+    var requiredXPForNextLevel: Int {
+        100 + (profile.level - 1) * 50
+    }
+    
     func unlockAchievement(_ id: String) {
-        userRef()?.updateData(["achievements": FieldValue.arrayUnion([id])])
+        guard !profile.achievements.contains(id) else { return }
+        profile.achievements.append(id)
+        save()
     }
-
+    
     func uploadProfileImage(_ image: UIImage, completion: @escaping (String?) -> Void) {
         guard let uid = Auth.auth().currentUser?.uid,
               let data = image.jpegData(compressionQuality: 0.8) else {
             completion(nil)
             return
         }
-
+        
         let ref = storage.reference().child("profile_pics/\(uid).jpg")
         ref.putData(data, metadata: nil) { _, error in
             guard error == nil else {
@@ -61,19 +87,41 @@ class UserProfileManager: ObservableObject {
             }
             ref.downloadURL { url, _ in
                 if let url = url {
-                    self.userRef()?.updateData(["profilePicURL": url.absoluteString])
                     DispatchQueue.main.async {
                         self.profile.profilePicURL = url.absoluteString
+                        self.save()
+                        completion(url.absoluteString)
                     }
-                    completion(url.absoluteString)
                 } else {
                     completion(nil)
                 }
             }
         }
     }
-
+    
+    func save() {
+        guard let ref = userRef() else { return }
+        do {
+            try ref.setData(from: profile)
+        } catch {
+            print("Failed to save profile: \(error)")
+        }
+    }
+    
     deinit {
         listener?.remove()
+    }
+    func getCurrentProfileData() async throws -> [String: Any]? {
+        guard let uid = Auth.auth().currentUser?.uid else { return nil }
+        let snapshot = try await db.collection("users").document(uid).getDocument()
+        return snapshot.data()
+    }
+
+    func setProfileData(_ data: [String: Any]) async throws {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        try await db.collection("users").document(uid).setData(data, merge: true)
+    }
+    func reset() {
+        self.profile = UserProfile() // default empty profile
     }
 }

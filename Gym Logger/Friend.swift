@@ -1,3 +1,4 @@
+import Foundation
 struct Friend: Identifiable, Codable {
     var id: String // friend userId
     var name: String

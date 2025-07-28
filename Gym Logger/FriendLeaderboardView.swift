@@ -1,3 +1,6 @@
+import SwiftUI
+import FirebaseAuth
+import FirebaseFirestore
 struct FriendLeaderboardView: View {
     @EnvironmentObject var friendManager: FriendManager
     @State private var leaderboard: [AppUser] = []
@@ -12,12 +15,16 @@ struct FriendLeaderboardView: View {
                             .frame(width: 30)
                         VStack(alignment: .leading) {
                             Text(user.profileName)
-                            Text("@\(user.username)").font(.caption).foregroundColor(.gray)
+                                .fontWeight(user.id == Auth.auth().currentUser?.uid ? .bold : .regular)
+                            Text("@\(user.username)")
+                                .font(.caption)
+                                .foregroundColor(.gray)
                         }
                         Spacer()
                         Text("Lv \(user.level)")
                         Text("\(user.xp) XP").font(.caption).foregroundColor(.green)
                     }
+                    .background(user.id == Auth.auth().currentUser?.uid ? Color.blue.opacity(0.05) : Color.clear)
                 }
             }
             .navigationTitle("Leaderboard")
@@ -32,8 +39,11 @@ struct FriendLeaderboardView: View {
         let db = Firestore.firestore()
 
         friendManager.fetchFriendIDs { friendIDs in
+            var idsToQuery = friendIDs
+            idsToQuery.append(uid) // ✅ Include current user ID
+
             db.collection("users")
-                .whereField(FieldPath.documentID(), in: friendIDs)
+                .whereField(FieldPath.documentID(), in: idsToQuery)
                 .getDocuments { snapshot, error in
                     if let docs = snapshot?.documents {
                         leaderboard = docs.compactMap { doc in
@@ -51,4 +61,5 @@ struct FriendLeaderboardView: View {
                 }
         }
     }
+
 }

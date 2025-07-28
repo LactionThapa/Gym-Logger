@@ -1,8 +1,10 @@
 import Foundation
 
 struct UserProfile: Codable {
-    var profileName: String
-    var xp: Int
-    var profilePicURL: String?
-    var achievements: [String]
+    var username: String = "" 
+    var profileName: String = "Your Name"
+    var profilePicURL: String? = nil
+    var xp: Int = 0
+    var level: Int = 1
+    var achievements: [String] = []
 }

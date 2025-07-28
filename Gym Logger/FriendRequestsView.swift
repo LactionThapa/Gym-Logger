@@ -1,21 +1,34 @@
+import SwiftUI
 struct FriendRequestsView: View {
     @EnvironmentObject var friendManager: FriendManager
-    
+    @State private var usernames: [String: String] = [:]
+
     var body: some View {
         List {
-            ForEach(friendManager.incomingRequests, id: \.self) { requesterID in
-                HStack {
-                    Text("Request from: \(requesterID)") // Replace with username fetch
-                    Spacer()
-                    Button("Accept") {
-                        friendManager.acceptFriendRequest(fromUserID: requesterID)
+            if friendManager.incomingRequests.isEmpty {
+                Text("No incoming requests.")
+                    .foregroundColor(.gray)
+            } else {
+                ForEach(friendManager.incomingRequests, id: \.self) { requesterID in
+                    HStack {
+                        Text("Request from: \(usernames[requesterID] ?? "Loading...")")
+                            .fontWeight(.medium)
+                        Spacer()
+                        Button("Accept") {
+                            friendManager.acceptFriendRequest(fromUserID: requesterID)
+                        }
+                        .buttonStyle(.borderedProminent)
+
+                        Button("Reject") {
+                            friendManager.rejectFriendRequest(fromUserID: requesterID)
+                        }
+                        .buttonStyle(.bordered)
                     }
-                    .buttonStyle(.borderedProminent)
-                    
-                    Button("Reject") {
-                        friendManager.rejectFriendRequest(fromUserID: requesterID)
+                    .onAppear {
+                        if usernames[requesterID] == nil {
+                            fetchUsername(for: requesterID)
+                        }
                     }
-                    .buttonStyle(.bordered)
                 }
             }
         }
@@ -24,4 +37,13 @@ struct FriendRequestsView: View {
         }
         .navigationTitle("Friend Requests")
     }
+
+    private func fetchUsername(for userID: String) {
+        friendManager.getUsername(forUserID: userID) { username in
+            DispatchQueue.main.async {
+                usernames[userID] = username ?? "Unknown1"
+            }
+        }
+    }
 }
+

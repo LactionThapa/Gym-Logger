@@ -1,10 +1,27 @@
 import Foundation
 
 struct Achievement: Identifiable, Codable {
-    let id: UUID = UUID()
+    var id: String
     let title: String
     let description: String
-    let earned: Bool
-    let dateEarned: Date?
+    var earned: Bool
+    var dateEarned: Date?
     let imageName: String
+
+    init(
+        id: String,
+        title: String,
+        description: String,
+        earned: Bool = false,
+        dateEarned: Date? = nil,
+        imageName: String
+    ) {
+        self.id = id
+        self.title = title
+        self.description = description
+        self.earned = earned
+        self.dateEarned = dateEarned
+        self.imageName = imageName
+    }
 }
+
