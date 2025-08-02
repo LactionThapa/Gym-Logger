@@ -25,75 +25,19 @@ struct UserProfileView: View {
             ZStack {
                 ScrollView {
                     VStack(spacing: 20) {
-                        if authManager.isAnonymous {
-                            Button("Sync My Data") {
-                                showingLogin = true
-                            }
-                            .sheet(isPresented: $showingLogin) {
-                                LoginView {
-                                    Task {
-                                        let profileData = try? await profileManager.getCurrentProfileData()
-                                        let workoutsData = try? await workoutStorage.getAllWorkouts()
-                                        
-                                        try await Task.sleep(nanoseconds: 1_000_000_000)
-                                        
-                                        if let profileData = profileData {
-                                            try? await profileManager.setProfileData(profileData)
-                                        }
-                                        if let workoutsData = workoutsData {
-                                            try? await workoutStorage.saveWorkouts(workoutsData)
-                                        }
-                                        
-                                        profileManager.fetchUserProfile()
-                                        workoutStorage.load()
-                                        workoutTemplateStorage.fetchTemplates()
-                                        
-                                        while Auth.auth().currentUser?.uid == nil {
-                                                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s
-                                        }
-                                        achievementManager.loadAchievements()
-                                    }
-                                }
-                            }
-                        }
-                        
-                        if let user = Auth.auth().currentUser {
-                            Text(user.isAnonymous ? "Not synced" : "Synced")
-                                .font(.caption)
-                                .foregroundColor(user.isAnonymous ? .red : .green)
-                        }
-                        
-                        if authManager.isLoggedIn {
-                            Text("Logged in as \(profileManager.profile.username.isEmpty ? "Unnamed" : profileManager.profile.username)")
-                                .font(.caption)
-                                .foregroundColor(.gray)
-                            Button(role: .destructive) {
-                                do {
-                                    try Auth.auth().signOut()
-                                    DispatchQueue.main.async {
-                                        profileManager.reset()
-                                        achievementManager.reset()
-                                    }
-                                    // Optionally sign in anonymously again to keep app usable
-                                    Auth.auth().signInAnonymously { result, error in
-                                        if let error = error {
-                                            print("Anonymous sign-in failed: \(error)")
-                                        }
-                                    }
-                                } catch {
-                                    print("Error signing out: \(error)")
-                                }
-                            } label: {
-                                Text("Log Out")
-                                    .foregroundColor(.red)
-                            }
-                        }
+                       
                         profilePicture
                         
                         TextField("Enter Name", text: $profileManager.profile.profileName)
                             .font(.title2)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal)
+                        
+                        if !profileManager.profile.username.isEmpty {
+                            Text("@\(profileManager.profile.username)")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                        }
                         
                         xpSection
                         
@@ -177,15 +121,36 @@ struct UserProfileView: View {
     private var xpSection: some View {
         VStack(spacing: 6) {
             Text("Level \(profileManager.profile.level)")
-                .font(.headline)
+                .font(.caption)
+                .bold()
             
-            ProgressView(value: Double(profileManager.currentXPIntoLevel),
-                         total: Double(profileManager.requiredXPForNextLevel))
-            .accentColor(.green)
-            .padding(.horizontal)
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.gray.opacity(0.2))
+                        .frame(height: 8)
+                    
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                gradient: Gradient(colors: [.green, .blue]),
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(
+                            width: geometry.size.width *
+                            CGFloat(profileManager.currentXPIntoLevel) /
+                            CGFloat(max(profileManager.requiredXPForNextLevel, 1)),
+                            height: 8
+                        )
+                        .animation(.easeOut(duration: 0.4), value: profileManager.currentXPIntoLevel)
+                }
+            }
+            .frame(height: 8)
             
             Text("\(profileManager.currentXPIntoLevel) / \(profileManager.requiredXPForNextLevel) XP")
-                .font(.caption)
+                .font(.caption2)
                 .foregroundColor(.gray)
         }
     }

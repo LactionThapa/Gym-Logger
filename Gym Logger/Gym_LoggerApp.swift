@@ -21,12 +21,12 @@ struct Gym_LoggerApp: App {
     @StateObject private var achievementManager = AchievementManager()
     @StateObject private var userProfileManager = UserProfileManager()
     @StateObject var friendManager = FriendManager()
-    
+        
     @StateObject var authManager = AuthManager()
     
     var body: some Scene {
         WindowGroup {
-            MainTabView()
+            MainContainerView()
                 .environmentObject(workoutStorage)
                 .environmentObject(AchievementManager.sharedInstance)
                 .environmentObject(templateStorage)

@@ -7,49 +7,53 @@ struct MainTabView: View {
     @EnvironmentObject var achievementManager: AchievementManager
     @EnvironmentObject var userProfileManager: UserProfileManager
     @EnvironmentObject var friendManager: FriendManager
-    
     @EnvironmentObject var authManager: AuthManager
 
-    var body: some View {
-        ZStack {
-            TabView {
-                TemplateListView().tabItem {
-                    Image(systemName: "plus.circle.fill")
-                    Text("Log Workout")
-                }
-                WorkoutHistoryView().tabItem {
-                    Image(systemName: "clock.fill")
-                    Text("History")
-                }
-                UserProfileView().tabItem {
-                    Label("Profile", systemImage: "person.crop.circle")
-                }
-                FriendsListView().tabItem {
-                    Label("Friends", systemImage: "person.2.fill")
-                }
-                FriendLeaderboardView().tabItem {
-                    Label("Leaderboard", systemImage: "trophy.fill")
-                }
-            }
+    var toggleSidebar: () -> Void
 
-            // ✅ Global popup shown from AchievementManager
-            if let unlocked = achievementManager.unlockedRecently {
-                AchievementUnlockedView(achievement: unlocked, isVisible: .constant(true))
-                    .transition(.scale)
-                    .onAppear {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                            achievementManager.unlockedRecently = nil
-                        }
+        var body: some View {
+            ZStack {
+                TabView {
+                    SidebarInjectingNavigationView(toggleSidebar: toggleSidebar) {
+                        TemplateListView()
                     }
-                    .zIndex(1)
+                    .tabItem {
+                        Label("Log Workout", systemImage: "plus.circle.fill")
+                    }
+
+                    SidebarInjectingNavigationView(toggleSidebar: toggleSidebar) {
+                        WorkoutHistoryView()
+                    }
+                    .tabItem {
+                        Label("History", systemImage: "clock.fill")
+                    }
+
+                    SidebarInjectingNavigationView(toggleSidebar: toggleSidebar) {
+                        FriendLeaderboardView()
+                    }
+                    .tabItem {
+                        Label("Leaderboard", systemImage: "trophy.fill")
+                    }
+                }
+
+                // 🏆 Achievement Popup
+                if let unlocked = achievementManager.unlockedRecently {
+                    AchievementUnlockedView(achievement: unlocked, isVisible: .constant(true))
+                        .transition(.scale)
+                        .onAppear {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                achievementManager.unlockedRecently = nil
+                            }
+                        }
+                        .zIndex(1)
+                }
             }
         }
-
-    }
 }
 
+
 #Preview {
-    MainTabView()
+    MainContainerView()
         .environmentObject(WorkoutStorage())
         .environmentObject(WorkoutTemplateStorage())
         .environmentObject(ExerciseLibraryStorage())
