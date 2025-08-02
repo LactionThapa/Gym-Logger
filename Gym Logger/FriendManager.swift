@@ -43,6 +43,11 @@ class FriendManager: ObservableObject {
             .collection("friends")
             .document(friendID)
             .delete()
+        db.collection("users")
+            .document(friendID)
+            .collection("friends")
+            .document(uid)
+            .delete()
     }
     
     // MARK: - Send Friend Request by Username
@@ -89,6 +94,14 @@ class FriendManager: ObservableObject {
                                 completion(.success(()))
                             }
                         }
+                    self.db.collection("users")
+                        .document(currentUserID)
+                        .collection("sentRequests")
+                        .document(targetUserID)
+                        .setData([
+                            "username": toUsername,
+                            "timestamp": FieldValue.serverTimestamp()
+                        ])
                 }
         }
     }
@@ -105,6 +118,25 @@ class FriendManager: ObservableObject {
                 self.incomingRequests = docs.map { $0.documentID }
             }
     }
+    func fetchSentRequests(completion: @escaping (Set<String>) -> Void) {
+        guard let uid = Auth.auth().currentUser?.uid else {
+            completion([])
+            return
+        }
+        
+        db.collection("users")
+            .document(uid)
+            .collection("sentRequests")
+            .getDocuments { snapshot, error in
+                if let documents = snapshot?.documents {
+                    let usernames = documents.compactMap { $0.data()["username"] as? String }
+                    completion(Set(usernames))
+                } else {
+                    completion([])
+                }
+            }
+    }
+    
     
     // MARK: - Accept/Reject Friend Request
     func acceptFriendRequest(fromUserID: String) {
@@ -136,27 +168,39 @@ class FriendManager: ObservableObject {
         }
         
         group.notify(queue: .main) {
+            // Add each other to friends
             currentUserRef.collection("friends").document(fromUserID).setData([
                 "name": otherUsername,
                 "since": timestamp
             ])
+            
             otherUserRef.collection("friends").document(currentUserID).setData([
                 "name": currentUsername,
                 "since": timestamp
             ])
+            
+            // Remove the request from current user's incoming
             currentUserRef.collection("friendRequests").document(fromUserID).delete()
+            
+            // 🔥 Remove from sender's sentRequests
+            otherUserRef.collection("sentRequests").document(currentUserID).delete()
         }
     }
+
     
     func rejectFriendRequest(fromUserID: String) {
-        guard let uid = Auth.auth().currentUser?.uid else { return }
+        guard let currentUserID = Auth.auth().currentUser?.uid else { return }
         
-        db.collection("users")
-            .document(uid)
-            .collection("friendRequests")
-            .document(fromUserID)
-            .delete()
+        let currentUserRef = db.collection("users").document(currentUserID)
+        let senderRef = db.collection("users").document(fromUserID)
+        
+        // Remove the request from receiver's incoming
+        currentUserRef.collection("friendRequests").document(fromUserID).delete()
+        
+        // 🔥 Also remove the sent request from sender
+        senderRef.collection("sentRequests").document(currentUserID).delete()
     }
+
     
     // MARK: - Fetch Usernames for Display
     func fetchUsernames(for ids: [String], completion: @escaping ([String: String]) -> Void) {
@@ -193,7 +237,7 @@ class FriendManager: ObservableObject {
             if let error = error {
                 print("❌ Firestore error: \(error)")
             }
-
+            
             if let data = snapshot?.data(), let username = data["username"] as? String {
                 completion(username)
             } else {
@@ -202,6 +246,4 @@ class FriendManager: ObservableObject {
             }
         }
     }
-
-
 }

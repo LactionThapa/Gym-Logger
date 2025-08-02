@@ -8,14 +8,28 @@ struct FriendsListView: View {
     @State private var showUserSearch = false
     
     var body: some View {
+        let pendingRequestCount = friendManager.incomingRequests.count
+
         NavigationStack {
             List {
                 // 🔗 Friend Requests Navigation
-                Section {
-                    NavigationLink("View Friend Requests") {
-                        FriendRequestsView()
+                NavigationLink {
+                    FriendRequestsView()
+                } label: {
+                    HStack {
+                        Text("View Friend Requests")
+                        Spacer()
+                        if friendManager.incomingRequests.count > 0 {
+                            Text("\(friendManager.incomingRequests.count)")
+                                .font(.caption2)
+                                .padding(6)
+                                .background(Color.red)
+                                .foregroundColor(.white)
+                                .clipShape(Circle())
+                        }
                     }
                 }
+
                 // 👫 Existing Friends
                 Section(header: Text("My Friends")) {
                     ForEach(friendManager.friends) { friend in
@@ -53,6 +67,7 @@ struct FriendsListView: View {
             .navigationTitle("My Friends")
             .onAppear {
                 friendManager.fetchFriends()
+                friendManager.fetchIncomingRequests()
             }
         }
     }
