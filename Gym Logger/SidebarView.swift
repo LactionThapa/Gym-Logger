@@ -131,10 +131,8 @@ struct SidebarView: View {
         }
         .fullScreenCover(isPresented: $showLogin) {
             LoginView{
-                
             }
         }
-        
         .sheet(isPresented: $showProfile) {
             UserProfileView()
         }

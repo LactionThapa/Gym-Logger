@@ -38,3 +38,4 @@ struct Gym_LoggerApp: App {
         }
     }
 }
+

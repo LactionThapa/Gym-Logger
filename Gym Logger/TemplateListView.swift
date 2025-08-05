@@ -15,30 +15,67 @@ struct TemplateListView: View {
                 ScrollView {
                     LazyVStack(spacing: 16) {
                         ForEach(templateStorage.templates) { template in
-                            NavigationLink(destination: TemplateDetailView(template: template)) {
-                                VStack(alignment: .leading) {
+                            VStack{
+                                HStack{
                                     Text(template.name)
                                         .font(.headline)
                                         .foregroundColor(.white)
-                                    Text("Exercises: \(template.exercises.count)")
-                                        .font(.subheadline)
-                                        .foregroundColor(.gray)
+                                    Spacer()
+                                    
+                                    Button {
+                                        editingTemplate = template
+                                        isEditingActive = true
+                                    } label: {
+                                        Image(systemName: "pencil")
+                                            .foregroundColor(.white)
+                                            .padding(8)
+                                            .background(Color(hex: "4A6572"))
+                                            .clipShape(Circle())
+                                            .shadow(color: Color.black.opacity(0.25), radius: 8, x: 0, y: 4)
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                    .padding(.trailing, 4)
+                                    
+                                    Button(role: .destructive) {
+                                        templateStorage.deleteTemplate(id: template.id)
+                                    } label: {
+                                        Image(systemName: "trash")
+                                            .foregroundColor(.red)
+                                            .padding(8)
+                                            .background(Color(hex: "4A6572"))
+                                            .clipShape(Circle())
+                                            .shadow(color: Color.black.opacity(0.25), radius: 8, x: 0, y: 4)
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
                                 }
-                                .padding()
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(Color.blue.opacity(0.8))
-                                .cornerRadius(12)
+                                NavigationLink(destination: TemplateDetailView(template: template)) {
+                                    VStack(alignment: .leading) {
+                                        ScrollView(.horizontal, showsIndicators: false) {
+                                            HStack(spacing: 8) {
+                                                ForEach(template.exercises, id: \.id) { exercise in
+                                                    Text(exercise.name)
+                                                        .font(.caption)
+                                                        .padding(.vertical, 4)
+                                                        .padding(.horizontal, 8)
+                                                        .background(Color(hex: "F9AA33"))
+                                                        .foregroundColor(.black)
+                                                        .clipShape(Capsule())
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
-                            .contextMenu {
-                                Button("Edit") {
-                                    editingTemplate = template
-                                    isEditingActive = true
-                                }
-                                Button("Delete", role: .destructive) {
-                                    templateStorage.deleteTemplate(id: template.id)
-                                }
-                            }
+                            .padding()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(Color(hex: "232F34").opacity(1)) // or any light/dark adaptive color
+                                    .shadow(color: Color.black.opacity(0.5), radius: 8, x: 0, y: 4) // shadow for floating
+                            )
+                            .padding(.horizontal, 8)
                         }
+                        
                     }
                     .padding()
                 }
@@ -46,13 +83,23 @@ struct TemplateListView: View {
                 NavigationLink(destination: WorkoutBuilderView()) {
                     Label("Create Template", systemImage: "plus")
                         .padding()
-                        .background(Color.accentColor)
+                        .background(Color(hex: "F9AA33"))
                         .foregroundColor(.white)
                         .clipShape(Capsule())
+                        .shadow(color: Color.black.opacity(0.5), radius: 8, x: 0, y: 4)
                 }
                 .padding()
             }
-            .navigationTitle("Workout Templates")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("Workouts")
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundColor(.white)
+                }
+            }
+
+            .background(Color("AppBackground").ignoresSafeArea())
             
             // ✅ Modern way to handle navigation using .navigationDestination
             .navigationDestination(isPresented: $isEditingActive) {
@@ -75,6 +122,4 @@ struct TemplateListView: View {
         }
     }
 }
-
-
 

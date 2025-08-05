@@ -9,9 +9,9 @@ struct TemplateDetailView: View {
 
     let template: WorkoutTemplate
     @State private var exercises: [Exercise]
-    @State private var started = false
     @State private var showConfirmation = false
     @FocusState private var focusedField: UUID?
+    @State private var started = false
 
 
     init(template: WorkoutTemplate) {
@@ -19,7 +19,7 @@ struct TemplateDetailView: View {
         _exercises = State(initialValue: template.exercises)
     }
 
-    var body: some View {
+    var body: some View {   
         List {
             ForEach(exercises.indices, id: \.self) { i in
                 exerciseSection(for: i)

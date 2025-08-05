@@ -27,6 +27,7 @@ struct FriendLeaderboardView: View {
                     .background(user.id == Auth.auth().currentUser?.uid ? Color.blue.opacity(0.05) : Color.clear)
                 }
             }
+            .background(Color("AppBackground"))
             .navigationTitle("Leaderboard")
             .onAppear {
                 fetchLeaderboard()
