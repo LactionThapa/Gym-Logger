@@ -317,7 +317,7 @@ struct ExerciseLibraryView: View {
                 }) {
                     VStack(alignment: .leading) {
                         Text(exercise.name).bold()
-                        Text("Weight: \(exercise.weight, specifier: "%.1f") kg")
+                        //Text("Weight: \(exercise.weight, specifier: "%.1f") kg")
                         Text("Target Reps: \(exercise.sets.map { "\($0.targetReps)" }.joined(separator: ", "))")
                             .font(.subheadline)
                             .foregroundColor(.gray)

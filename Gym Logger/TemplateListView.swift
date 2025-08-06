@@ -98,7 +98,7 @@
         @ViewBuilder
         private var detailDestination: some View {
             if let template = selectedTemplateForDetail {
-                TemplateDetailView(template: template)
+                TemplateDetailView(template: template, started: true)
             }
         }
 
@@ -214,7 +214,7 @@
                                 }
                             }) {
                                 Image(systemName: "trash")
-                                    .foregroundColor(.red)
+                                    .foregroundColor(.white)
                                     .padding(8)
                                     .background(Color(hex: "4A6572"))
                                     .clipShape(Circle())
