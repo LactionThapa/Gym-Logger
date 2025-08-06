@@ -19,13 +19,19 @@ struct ExerciseLibraryPickerView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("Built-In") {
+                Section(header:
+                            Text("Built-In")
+                    .foregroundColor(.white)
+                    .font(.headline)) {
                     ForEach(filteredExercises.filter { $0.type == .builtIn }) { ex in
                         ExerciseRow(ex: ex)
                     }
                 }
 
-                Section("Custom") {
+                Section(header:
+                            Text("Custom")
+                    .foregroundColor(.white)
+                    .font(.headline)) {
                     ForEach(filteredExercises.filter { $0.type == .custom }) { ex in
                         ExerciseRow(ex: ex)
                     }
@@ -36,13 +42,29 @@ struct ExerciseLibraryPickerView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color("AppBackground"))
             .searchable(text: $searchText)
-            .navigationTitle("Exercise Library")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("Exercise Library")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.white)
+                }
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(action: {
+                        dismiss()
+                    }) {
+                        Text("Cancel")
+                            .foregroundColor(Color(hex: "F9AA33"))
+                    }
                 }
             }
+            .onAppear {
+                configureSearchBarAppearance()
+            }
+
         }
     }
 
@@ -59,3 +81,19 @@ struct ExerciseLibraryPickerView: View {
         }
     }
 }
+import UIKit
+
+func configureSearchBarAppearance() {
+    let textFieldAppearance = UITextField.appearance(whenContainedInInstancesOf: [UISearchBar.self])
+    textFieldAppearance.textColor = .black
+    textFieldAppearance.backgroundColor = .white
+    textFieldAppearance.attributedPlaceholder = NSAttributedString(
+        string: "Search",
+        attributes: [.foregroundColor: UIColor.gray.withAlphaComponent(0.6)]
+    )
+    
+    let searchBarAppearance = UISearchBar.appearance()
+    searchBarAppearance.barTintColor = UIColor.black
+    searchBarAppearance.tintColor = UIColor(hex: "#F9AA33")
+}
+
