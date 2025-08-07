@@ -55,7 +55,7 @@ struct MainTabView: View {
 
 
 #Preview {
-    LoginView()
+    MainContainerView()
         .environmentObject(WorkoutStorage())
         .environmentObject(WorkoutTemplateStorage())
         .environmentObject(ExerciseLibraryStorage())

@@ -36,7 +36,7 @@ struct FriendLeaderboardView: View {
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text("Leaderboard")
-                        .font(.title2.bold())
+                        .font(.system(size: 28, weight: .bold))
                         .foregroundColor(.white)
                 }
             }
@@ -113,7 +113,6 @@ struct FriendLeaderboardView: View {
                                     .reduce(0, +)
                             }
                         }()
-
                         return AppUser(
                             id: doc.documentID,
                             username: data["username"] as? String ?? "",

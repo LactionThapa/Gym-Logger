@@ -246,4 +246,23 @@ class FriendManager: ObservableObject {
             }
         }
     }
+    func getUserProfile(forUserID id: String, completion: @escaping (AppUser?) -> Void) {
+        Firestore.firestore().collection("users").document(id).getDocument { snapshot, error in
+            guard let data = snapshot?.data(), error == nil else {
+                completion(nil)
+                return
+            }
+            
+            let user = AppUser(
+                id: id,
+                username: data["username"] as? String ?? "",
+                profileName: data["profileName"] as? String ?? "",
+                level: data["level"] as? Int ?? 1,
+                xp: data["xp"] as? Int ?? 0,
+                profilePicURL: data["profilePicURL"] as? String
+            )
+            completion(user)
+        }
+    }
+
 }

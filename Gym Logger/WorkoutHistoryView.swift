@@ -51,7 +51,7 @@ struct WorkoutHistoryView: View {
                     HStack {
                         Spacer()
                         Text("Workout Logs")
-                            .font(.title2.bold())
+                            .font(.system(size: 28, weight: .bold))
                             .foregroundColor(.white)
                         Spacer()
                     }

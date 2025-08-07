@@ -6,12 +6,16 @@ struct SidebarView: View {
     @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var achievementManager: AchievementManager
     @EnvironmentObject var profileManager: UserProfileManager
+    @EnvironmentObject var friendManager: FriendManager
+    
     @State private var showLogin = false
     @State private var showProfile = false
     @State private var showFriends = false
     
+    private var pendingCount: Int { friendManager.incomingRequests.count } 
+    
     var body: some View {
-        NavigationStack{
+        NavigationStack {
             VStack(alignment: .leading, spacing: 24) {
                 // MARK: - User Info Section
                 Button {
@@ -25,7 +29,7 @@ struct SidebarView: View {
                                 Circle()
                                     .stroke(Color.white, lineWidth: 3) // Border
                                     .frame(width: 90, height: 90)
-
+                                
                                 AsyncImage(url: url) { image in
                                     image.resizable()
                                 } placeholder: {
@@ -39,7 +43,7 @@ struct SidebarView: View {
                                 Circle()
                                     .stroke(Color.white, lineWidth: 3) // Border
                                     .frame(width: 90, height: 90)
-
+                                
                                 Circle()
                                     .fill(Color.gray.opacity(0.4))
                                     .frame(width: 90, height: 90)
@@ -102,20 +106,35 @@ struct SidebarView: View {
                     .background(Color.white)
                     .shadow(color: .black.opacity(0.5), radius: 4, x: 0, y: 2)
                     .padding(.horizontal)
-
+                
+                // FRIENDS button with badge
                 HStack {
                     Spacer()
                     Button {
                         showFriends = true
                     } label: {
-                        Label("Friends", systemImage: "person.2.fill")
-                            .frame(maxWidth: .infinity)
-                            .foregroundStyle(.white)
+                        HStack(spacing: 8) {
+                            Image(systemName: "person.2.fill")
+                            Text("Friends")
+                            
+                            if pendingCount > 0 {
+                                Text("\(pendingCount)")
+                                    .font(.caption2).bold()
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Capsule().fill(Color.red))
+                                    .foregroundColor(.white)
+                                    .transition(.scale.combined(with: .opacity))
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .foregroundStyle(.white)
                     }
                     .buttonStyle(PlainButtonStyle())
+                    .animation(.spring(response: 0.3, dampingFraction: 0.8), value: pendingCount) // nice pop
                     Spacer()
                 }
-
+                
                 // MARK: - Auth Buttons
                 if let user = Auth.auth().currentUser, !user.isAnonymous {
                     HStack {
@@ -157,7 +176,6 @@ struct SidebarView: View {
                         Spacer()
                     }
                 }
-
                 
                 Spacer()
             }
@@ -165,16 +183,15 @@ struct SidebarView: View {
             .frame(width: 260)
             .background(Color("AppBackground"))
             .edgesIgnoringSafeArea(.all)
-        }
-        .fullScreenCover(isPresented: $showLogin) {
-            LoginView{
+            .onAppear {
+                // Keep the badge live
+                friendManager.fetchIncomingRequests()
             }
         }
-        .sheet(isPresented: $showProfile) {
-            UserProfileView()
-        }
-        .sheet(isPresented: $showFriends) {
-            FriendsListView()
-        }
+        .fullScreenCover(isPresented: $showLogin) { LoginView{} }
+        .sheet(isPresented: $showProfile) { UserProfileView() }
+        .sheet(isPresented: $showFriends) { FriendsListView() }
     }
 }
+
+
