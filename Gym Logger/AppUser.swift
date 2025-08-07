@@ -5,4 +5,5 @@ struct AppUser: Identifiable, Codable {
     var profileName: String
     var level: Int
     var xp: Int
+    var profilePicURL: String?
 }

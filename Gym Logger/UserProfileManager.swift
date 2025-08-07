@@ -75,36 +75,53 @@ class UserProfileManager: ObservableObject {
     func uploadProfileImage(_ image: UIImage, completion: @escaping (String?) -> Void) {
         guard let uid = Auth.auth().currentUser?.uid,
               let data = image.jpegData(compressionQuality: 0.8) else {
+            print("❌ Missing UID or image data")
             completion(nil)
             return
         }
-        
+
         let ref = storage.reference().child("profile_pics/\(uid).jpg")
+        print("📤 Uploading image to Storage for UID: \(uid)")
+
         ref.putData(data, metadata: nil) { _, error in
-            guard error == nil else {
+            if let error = error {
+                print("❌ Upload error: \(error.localizedDescription)")
                 completion(nil)
                 return
             }
-            ref.downloadURL { url, _ in
+
+            ref.downloadURL { url, error in
+                if let error = error {
+                    print("❌ Failed to get download URL: \(error.localizedDescription)")
+                    completion(nil)
+                    return
+                }
+
                 if let url = url {
+                    print("✅ Image uploaded. URL: \(url.absoluteString)")
+
                     DispatchQueue.main.async {
                         self.profile.profilePicURL = url.absoluteString
+                        print("📝 Saving profile with new image URL...")
                         self.save()
                         completion(url.absoluteString)
                     }
-                } else {
-                    completion(nil)
                 }
             }
         }
     }
     
     func save() {
-        guard let ref = userRef() else { return }
+        guard let ref = userRef() else {
+            print("❌ Could not get userRef")
+            return
+        }
+
         do {
             try ref.setData(from: profile)
+            print("✅ Profile saved to Firestore.")
         } catch {
-            print("Failed to save profile: \(error)")
+            print("❌ Failed to save profile: \(error.localizedDescription)")
         }
     }
     
