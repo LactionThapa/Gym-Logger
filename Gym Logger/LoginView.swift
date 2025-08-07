@@ -16,69 +16,85 @@ struct LoginView: View {
     
     var body: some View {
         NavigationStack {
-            VStack(spacing: 16) {
-                Text(isLoginMode ? "Log In to Sync" : "Create Account to Sync")
-                    .font(.title2)
-                    .bold()
-                if !isLoginMode {
-                    TextField("Username", text: $username)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
+            ZStack {
+                Color("AppBackground")
+                    .ignoresSafeArea()
+                
+                VStack(spacing: 16) {
+                    Text(isLoginMode ? "Log In to Sync" : "Create Account to Sync")
+                        .font(.title2)
+                        .foregroundColor(.white)
+                        .bold()
+                    
+                    if !isLoginMode {
+                        TextField("Username", text: $username)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .padding()
+                            .background(Color(.secondarySystemBackground))
+                            .cornerRadius(8)
+                    }
+                    
+                    TextField("Email", text: $email)
+                        .keyboardType(.emailAddress)
+                        .textContentType(.emailAddress)
+                        .autocapitalization(.none)
                         .padding()
                         .background(Color(.secondarySystemBackground))
                         .cornerRadius(8)
-                }
-                
-                TextField("Email", text: $email)
-                    .keyboardType(.emailAddress)
-                    .textContentType(.emailAddress)
-                    .autocapitalization(.none)
-                    .padding()
-                    .background(Color(.secondarySystemBackground))
-                    .cornerRadius(8)
-                
-                SecureField("Password", text: $password)
-                    .textContentType(.password)
-                    .padding()
-                    .background(Color(.secondarySystemBackground))
-                    .cornerRadius(8)
-                
-                
-                if !errorMessage.isEmpty {
-                    Text(errorMessage)
-                        .foregroundColor(.red)
-                        .font(.caption)
-                }
-                
-                if isLoading {
-                    ProgressView()
-                } else {
-                    Button(action: handleAction) {
-                        Text(isLoginMode ? "Log In & Sync" : "Sign Up & Sync")
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.blue)
-                            .foregroundColor(.white)
-                            .cornerRadius(8)
+                    
+                    SecureField("Password", text: $password)
+                        .textContentType(.password)
+                        .padding()
+                        .background(Color(.secondarySystemBackground))
+                        .cornerRadius(8)
+                    
+                    if !errorMessage.isEmpty {
+                        Text(errorMessage)
+                            .foregroundColor(.red)
+                            .font(.caption)
                     }
+                    
+                    if isLoading {
+                        ProgressView()
+                    } else {
+                        Button(action: handleAction) {
+                            Text(isLoginMode ? "Log In & Sync" : "Sign Up & Sync")
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color(hex:"F9AA33"))
+                                .foregroundColor(.white)
+                                .cornerRadius(8)
+                        }
+                    }
+                    
+                    Button(isLoginMode ? "Don't have an account? Sign Up" : "Already have an account? Log In") {
+                        isLoginMode.toggle()
+                        errorMessage = ""
+                    }
+                    .font(.footnote)
+                    .foregroundColor(Color(hex: "F9AA33"))
+                    .padding(.top, 8)
+                    
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .foregroundColor(Color(hex: "F9AA33"))
+                    .padding(.top, 8)
                 }
-                
-                Button(isLoginMode ? "Don't have an account? Sign Up" : "Already have an account? Log In") {
-                    isLoginMode.toggle()
-                    errorMessage = ""
-                }
-                .font(.footnote)
-                .padding(.top, 8)
-                
-                Button("Cancel") {
-                    dismiss()
-                }
-                .padding(.top, 8)
+                .padding()
             }
-            .padding()
-            .navigationTitle("Account Sync")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("Account Sync")
+                        .font(.title)
+                        .foregroundColor(.white)
+                }
+            }
         }
     }
+    
     
     private func handleAction() {
         isLoading = true

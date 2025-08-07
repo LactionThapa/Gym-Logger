@@ -13,83 +13,86 @@ struct UserSearchView: View {
     @State private var showConfirmation = false
     @State private var pendingUser: AppUser? = nil
     
-    
     var body: some View {
         NavigationStack {
-            VStack {
-                TextField("Search by username", text: $searchText)
-                    .textFieldStyle(.roundedBorder)
-                    .padding()
+            ZStack {
+                Color("AppBackground")
+                    .ignoresSafeArea()
                 
-                List(searchResults) { user in
-                    HStack {
-                        VStack(alignment: .leading) {
-                            Text(user.profileName)
-                            Text("@\(user.username)")
-                                .font(.caption)
-                                .foregroundColor(.gray)
-                        }
-                        Spacer()
-                        VStack(alignment: .trailing) {
-                            Text("Lv \(user.level)")
-                            Text("\(user.xp) XP")
-                                .font(.caption)
-                                .foregroundColor(.green)
-                            
-                            if friendUsernames.contains(user.username) {
-                                Label("Friends", systemImage: "person.fill.checkmark")
+                VStack {
+                    TextField("Search by username", text: $searchText)
+                        .textFieldStyle(.roundedBorder)
+                        .padding()
+                    
+                    List(searchResults) { user in
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text(user.profileName)
+                                Text("@\(user.username)")
                                     .font(.caption)
-                                    .foregroundColor(.blue)
-                            } else if sentRequests.contains(user.username) {
-                                Label("Requested", systemImage: "checkmark.circle")
+                                    .foregroundColor(.gray)
+                            }
+                            Spacer()
+                            VStack(alignment: .trailing) {
+                                Text("Lv \(user.level)")
+                                Text("\(user.xp) XP")
                                     .font(.caption)
                                     .foregroundColor(.green)
+                                
+                                if friendUsernames.contains(user.username) {
+                                    Label("Friends", systemImage: "person.fill.checkmark")
+                                        .font(.caption)
+                                        .foregroundColor(.blue)
+                                } else if sentRequests.contains(user.username) {
+                                    Label("Requested", systemImage: "checkmark.circle")
+                                        .font(.caption)
+                                        .foregroundColor(.green)
+                                }
                             }
                         }
-                    }
-                    .contentShape(Rectangle()) // Make the whole row tappable
-                    .onTapGesture {
-                        guard let currentUser = Auth.auth().currentUser, !currentUser.isAnonymous else {
-                            alertMessage = "Please log in to send friend requests."
-                            showAlert = true
-                            return
-                        }
-
-                        guard !sentRequests.contains(user.username),
-                              !friendUsernames.contains(user.username) else {
-                            // Do nothing if already sent or already friends
-                            return
-                        }
-
-                        pendingUser = user
-                        alertMessage = "Send friend request to @\(user.username)?"
-                        showConfirmation = true
-                    }
-                }
-                
-                .alert("Friend Request", isPresented: $showConfirmation, presenting: pendingUser) { user in
-                    Button("Send", role: .none) {
-                        friendManager.sendFriendRequest(toUsername: user.username) { result in
-                            switch result {
-                            case .success:
-                                sentRequests.insert(user.username)
-                                alertMessage = "Friend request sent to @\(user.username)"
-                            case .failure(let error):
-                                alertMessage = "Error: \(error.localizedDescription)"
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            guard let currentUser = Auth.auth().currentUser, !currentUser.isAnonymous else {
+                                alertMessage = "Please log in to send friend requests."
+                                showAlert = true
+                                return
                             }
-                            showAlert = true
+
+                            guard !sentRequests.contains(user.username),
+                                  !friendUsernames.contains(user.username) else {
+                                return
+                            }
+
+                            pendingUser = user
+                            alertMessage = "Send friend request to @\(user.username)?"
+                            showConfirmation = true
                         }
                     }
-                    Button("Cancel", role: .cancel) { }
-                } message: { user in
-                    Text("Would you like to send a friend request to @\(user.username)?")
+                    .scrollContentBackground(.hidden) // ✅ Remove default list background
+                    .background(Color.clear)
+                    
+                    .alert("Friend Request", isPresented: $showConfirmation, presenting: pendingUser) { user in
+                        Button("Send", role: .none) {
+                            friendManager.sendFriendRequest(toUsername: user.username) { result in
+                                switch result {
+                                case .success:
+                                    sentRequests.insert(user.username)
+                                    alertMessage = "Friend request sent to @\(user.username)"
+                                case .failure(let error):
+                                    alertMessage = "Error: \(error.localizedDescription)"
+                                }
+                                showAlert = true
+                            }
+                        }
+                        Button("Cancel", role: .cancel) { }
+                    } message: { user in
+                        Text("Would you like to send a friend request to @\(user.username)?")
+                    }
+                    
+                    .alert(isPresented: $showAlert) {
+                        Alert(title: Text("Friend Request"), message: Text(alertMessage), dismissButton: .default(Text("OK")))
+                    }
                 }
-                
-                .alert(isPresented: $showAlert) {
-                    Alert(title: Text("Friend Request"), message: Text(alertMessage), dismissButton: .default(Text("OK")))
-                }
-                
-                
             }
             .navigationTitle("Find Users")
             .onChange(of: searchText) { newValue in
@@ -105,7 +108,6 @@ struct UserSearchView: View {
                     }
                 }
             }
-            
         }
     }
     
@@ -118,7 +120,7 @@ struct UserSearchView: View {
         let db = Firestore.firestore()
         db.collection("users")
             .whereField("username", isGreaterThanOrEqualTo: text)
-            .whereField("username", isLessThanOrEqualTo: text + "\u{f8ff}") // Firestore prefix query
+            .whereField("username", isLessThanOrEqualTo: text + "\u{f8ff}")
             .limit(to: 10)
             .getDocuments { snapshot, error in
                 if let docs = snapshot?.documents {

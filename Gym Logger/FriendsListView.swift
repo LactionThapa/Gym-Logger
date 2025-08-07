@@ -11,66 +11,74 @@ struct FriendsListView: View {
         let pendingRequestCount = friendManager.incomingRequests.count
 
         NavigationStack {
-            List {
-                // 🔗 Friend Requests Navigation
-                NavigationLink {
-                    FriendRequestsView()
-                } label: {
-                    HStack {
-                        Text("View Friend Requests")
-                        Spacer()
-                        if friendManager.incomingRequests.count > 0 {
-                            Text("\(friendManager.incomingRequests.count)")
-                                .font(.caption2)
-                                .padding(6)
-                                .background(Color.red)
-                                .foregroundColor(.white)
-                                .clipShape(Circle())
-                        }
-                    }
-                }
+            ZStack {
+                Color("AppBackground")
+                    .ignoresSafeArea()
 
-                // 👫 Existing Friends
-                Section(header: Text("My Friends")) {
-                    ForEach(friendManager.friends) { friend in
+                List {
+                    // 🔗 Friend Requests Navigation
+                    NavigationLink {
+                        FriendRequestsView()
+                    } label: {
                         HStack {
-                            VStack(alignment: .leading) {
-                                Text(friend.name)
-                                    .font(.headline)
-                                Text("Friends since \(friend.since.formatted(date: .abbreviated, time: .omitted))")
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
-                            }
+                            Text("View Friend Requests")
                             Spacer()
-                        }
-                        .contextMenu {
-                            Button(role: .destructive) {
-                                friendManager.removeFriend(friendID: friend.id)
-                            } label: {
-                                Label("Remove Friend", systemImage: "trash")
+                            if pendingRequestCount > 0 {
+                                Text("\(pendingRequestCount)")
+                                    .font(.caption2)
+                                    .padding(6)
+                                    .background(Color.red)
+                                    .foregroundColor(.white)
+                                    .clipShape(Circle())
                             }
                         }
                     }
-                }
-                
-                // ➕ Add Friend
-                Section(header: Text("Add Friend")) {
-                    Button("Search Users") {
-                        showUserSearch = true
+
+                    // 👫 Existing Friends
+                    Section(header: Text("My Friends")) {
+                        ForEach(friendManager.friends) { friend in
+                            HStack {
+                                VStack(alignment: .leading) {
+                                    Text(friend.name)
+                                        .font(.headline)
+                                    Text("Friends since \(friend.since.formatted(date: .abbreviated, time: .omitted))")
+                                        .font(.caption)
+                                        .foregroundColor(.gray)
+                                }
+                                Spacer()
+                            }
+                            .contextMenu {
+                                Button(role: .destructive) {
+                                    friendManager.removeFriend(friendID: friend.id)
+                                } label: {
+                                    Label("Remove Friend", systemImage: "trash")
+                                }
+                            }
+                        }
+                    }
+
+                    // ➕ Add Friend
+                    Section(header: Text("Add Friend")) {
+                        Button("Search Users") {
+                            showUserSearch = true
+                        }
                     }
                 }
-                .sheet(isPresented: $showUserSearch) {
-                    UserSearchView()
-                        .environmentObject(friendManager)
-                }
+                .scrollContentBackground(.hidden) // ✅ removes white background
+                .background(Color.clear)
             }
             .navigationTitle("My Friends")
             .onAppear {
                 friendManager.fetchFriends()
                 friendManager.fetchIncomingRequests()
             }
+            .sheet(isPresented: $showUserSearch) {
+                UserSearchView()
+                    .environmentObject(friendManager)
+            }
         }
     }
+
     private func sendFriendRequest() {
         isLoading = true
         statusMessage = ""
