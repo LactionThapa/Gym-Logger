@@ -10,14 +10,25 @@ struct TemplateDetailView: View {
     let template: WorkoutTemplate
     @State private var exercises: [Exercise]
     @State private var showConfirmation = false
-    @FocusState private var focusedField: UUID?
+    @FocusState private var focusedField: FocusField?
     @State private var started = false
     
     @State private var showFAB = false
     @State private var showFABButtons = [false, false, false]
     @State private var isCreatingExercise = false
     @State private var selectedExerciseFromLibrary: Exercise? = nil
+    
+    @AppStorage("restTimerAutoStart") private var autoStartTimer: Bool = true
+    @AppStorage("globalRestTime") private var restTime: Int = 30
+    @State private var remainingTime: Int = 30
+    @State private var isTimerRunning = false
+    @State private var restTimer: Timer? = nil
+    @State private var showingTimePicker = false
 
+    enum FocusField: Hashable {
+            case weight(UUID)
+            case reps(UUID)
+    }
     
     var isWorkoutComplete: Bool {
         exercises.allSatisfy { exercise in
@@ -31,18 +42,28 @@ struct TemplateDetailView: View {
         self._started = State(initialValue: started)
     }
 
-    var body: some View {   
+    var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            ScrollView {
-                LazyVStack(spacing: 16) {
-                    ForEach(exercises.indices, id: \.self) { i in
-                        exerciseSection(for: i)
+            VStack(spacing: 0) {
+                RestTimerView(
+                    isRunning: $isTimerRunning,
+                    remainingTime: $remainingTime,
+                    showingTimePicker: $showingTimePicker,
+                    restTime: restTime,
+                    onStart: startTimer,
+                    onStop: stopTimer
+                )
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(spacing: 16) {
+                            ForEach(exercises.indices, id: \.self) { i in
+                                exerciseSection(for: i)
+                            }
+                        }
+                        .padding(.vertical)
                     }
                 }
-                .padding(.vertical)
             }
-
-            // FAB buttons
             VStack(alignment: .trailing, spacing: 12) {
                 if showFAB {
                     if showFABButtons[0] {
@@ -89,7 +110,6 @@ struct TemplateDetailView: View {
                     }
                 }
 
-                // Main FAB toggle button
                 Button(action: toggleFAB) {
                     Image(systemName: showFAB ? "xmark" : "plus")
                         .font(.title)
@@ -103,14 +123,21 @@ struct TemplateDetailView: View {
             .padding()
         }
 
+        // Rest of your body: background, toolbar, alert, etc.
         .background(Color("AppBackground"))
-        .ignoresSafeArea(.keyboard)
+        .ignoresSafeArea(.keyboard, edges: [])
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text(template.name)
                     .font(.system(size: 28, weight: .bold))
                     .foregroundColor(.white)
+            }
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    focusedField = nil
+                }
             }
         }
         .alert("Log this workout?", isPresented: $showConfirmation) {
@@ -130,14 +157,6 @@ struct TemplateDetailView: View {
                 dismiss()
             }
         }
-        .toolbar {
-            ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                Button("Done") {
-                    focusedField = nil
-                }
-            }
-        }
         .onAppear {
             if started {
                 for i in exercises.indices {
@@ -149,7 +168,6 @@ struct TemplateDetailView: View {
         }
         .sheet(isPresented: $isCreatingExercise) {
             ExerciseEditorView { newExercise in
-                // Reset completedReps for all sets before adding
                 var cleanedExercise = newExercise
                 for i in cleanedExercise.sets.indices {
                     cleanedExercise.sets[i].completedReps = nil
@@ -172,7 +190,28 @@ struct TemplateDetailView: View {
             ))
             .environmentObject(exerciseLibrary)
         }
+        .sheet(isPresented: $showingTimePicker) {
+            VStack {
+                Text("Select Rest Time")
+                    .font(.headline)
+                Picker("Rest Time", selection: $restTime) {
+                    ForEach(Array(stride(from: 15, through: 300, by: 15)), id: \.self) { value in
+                        Text("\(value) seconds").tag(value)
+                    }
+                }
+                .pickerStyle(WheelPickerStyle())
+                .labelsHidden()
+                .frame(height: 150)
+                Button("Done") {
+                    showingTimePicker = false
+                    remainingTime = restTime
+                }
+                .padding()
+            }
+            .presentationDetents([.height(300)])
+        }
     }
+
 
     // ✅ Extracted helper to simplify the body and avoid compiler issues
     private func exerciseSection(for index: Int) -> some View {
@@ -205,8 +244,10 @@ struct TemplateDetailView: View {
             .font(.caption)
             .foregroundColor(Color.gray)
             // Set rows
-            ForEach(exercises[index].sets.indices, id: \.self) { j in
-                let isDone = exercises[index].sets[j].completedReps != nil
+            ForEach(Array(exercises[index].sets.indices), id: \.self) { j in
+                let set = exercises[index].sets[j]
+                let isDone = set.completedReps != nil
+
                 HStack {
                     Button(action: {
                         exercises[index].sets.remove(at: j)
@@ -221,29 +262,36 @@ struct TemplateDetailView: View {
                             )
                     }
                     .buttonStyle(PlainButtonStyle())
+
                     TextField("Weight", value: $exercises[index].weight, format: .number)
                         .keyboardType(.decimalPad)
                         .foregroundColor(isDone ? .gray : .white)
                         .frame(width: 60)
                         .disabled(isDone)
+                        .focused($focusedField, equals: .weight(set.id))
 
                     TextField("Reps", value: $exercises[index].sets[j].targetReps, format: .number)
                         .keyboardType(.numberPad)
                         .foregroundColor(isDone ? .gray : .white)
                         .frame(width: 60)
                         .disabled(isDone)
+                        .focused($focusedField, equals: .reps(set.id))
 
                     Spacer()
 
                     Toggle("", isOn: Binding(
-                        get: { isDone},
+                        get: { isDone },
                         set: { isChecked in
                             exercises[index].sets[j].completedReps = isChecked ? exercises[index].sets[j].targetReps : nil
+                            if isChecked && autoStartTimer {
+                                startTimer()
+                            }
                         }
                     ))
                     .labelsHidden()
                 }
             }
+
             Button(action: {
                 exercises[index].sets.append(ExerciseSet(targetReps: 10, completedReps: nil))
             }) {
@@ -287,6 +335,40 @@ struct TemplateDetailView: View {
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
             showFAB = false
+        }
+    }
+    private func startTimer() {
+        isTimerRunning = true
+        remainingTime = restTime
+
+        restTimer?.invalidate()
+        restTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { t in
+            if remainingTime > 0 {
+                remainingTime -= 1
+            } else {
+                t.invalidate()
+                restTimer = nil
+                isTimerRunning = false
+                triggerHaptic()
+            }
+        }
+    }
+
+    private func stopTimer() {
+        restTimer?.invalidate()
+        restTimer = nil
+        isTimerRunning = false
+        remainingTime = restTime
+    }
+
+    private func triggerHaptic() {
+        DispatchQueue.main.async {
+            let generator = UINotificationFeedbackGenerator()
+            for i in 0..<5 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.2) {
+                    generator.notificationOccurred(.success)
+                }
+            }
         }
     }
 
