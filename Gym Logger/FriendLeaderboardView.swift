@@ -2,10 +2,17 @@ import SwiftUI
 import FirebaseAuth
 import FirebaseFirestore
 
+enum LeaderboardType: String, CaseIterable {
+    case allTime = "All Time"
+    case weekly = "This Week"
+    case monthly = "This Month"
+}
+
 struct FriendLeaderboardView: View {
     @EnvironmentObject var friendManager: FriendManager
-    @State private var leaderboard: [AppUser] = []
+    @State private var allUsers: [LeaderboardType: [AppUser]] = [:]
     @State private var isLoading = false
+    @State private var selectedType: LeaderboardType = .allTime
 
     var body: some View {
         NavigationStack {
@@ -13,42 +20,23 @@ struct FriendLeaderboardView: View {
                 Color("AppBackground")
                     .ignoresSafeArea()
 
-                VStack {
-                    if isLoading {
-                        ProgressView("Loading Leaderboard...")
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else if leaderboard.isEmpty {
-                        VStack(spacing: 12) {
-                            Image(systemName: "person.3.sequence.fill")
-                                .font(.system(size: 50))
-                                .foregroundColor(.gray)
-                            Text("No friends found.")
-                                .font(.headline)
-                            Text("Add friends to see how you rank!")
-                                .font(.subheadline)
-                                .foregroundColor(.gray)
-                        }
-                        .padding()
-                    } else {
-                        ScrollView {
-                            LazyVStack(spacing: 12) {
-                                ForEach(leaderboard.enumerated().map { $0 }, id: \.element.id) { index, user in
-                                    LeaderboardRowView(
-                                        user: user,
-                                        rank: index + 1,
-                                        isCurrentUser: user.id == Auth.auth().currentUser?.uid
-                                    )
-                                }
-                            }
-                            .padding()
-                        }
+                TabView(selection: $selectedType) {
+                    ForEach(LeaderboardType.allCases, id: \.self) { type in
+                        LeaderboardPageView(
+                            type: type,
+                            users: allUsers[type] ?? [],
+                            isLoading: isLoading,
+                            currentUserID: Auth.auth().currentUser?.uid
+                        )
+                        .tag(type)
                     }
                 }
+                .tabViewStyle(.page(indexDisplayMode: .automatic))
             }
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text("Leaderboard")
-                        .font(.title2.bold()) // ✅ Bigger navigation title
+                        .font(.title2.bold())
                         .foregroundColor(.white)
                 }
             }
@@ -57,12 +45,17 @@ struct FriendLeaderboardView: View {
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .onAppear {
-                fetchLeaderboard()
+                LeaderboardType.allCases.forEach { fetchLeaderboard(for: $0) }
+            }
+            .onChange(of: selectedType) { newType in
+                if allUsers[newType] == nil {
+                    fetchLeaderboard(for: newType)
+                }
             }
         }
     }
 
-    func fetchLeaderboard() {
+    func fetchLeaderboard(for type: LeaderboardType) {
         guard let uid = Auth.auth().currentUser?.uid else { return }
         let db = Firestore.firestore()
         isLoading = true
@@ -72,7 +65,7 @@ struct FriendLeaderboardView: View {
             idsToQuery.append(uid)
 
             guard !idsToQuery.isEmpty else {
-                leaderboard = []
+                allUsers[type] = []
                 isLoading = false
                 return
             }
@@ -87,28 +80,57 @@ struct FriendLeaderboardView: View {
                         return
                     }
 
-                    leaderboard = docs.compactMap { doc in
+                    let processed = docs.compactMap { doc in
                         let data = doc.data()
+                        let allTimeXP = data["xp"] as? Int ?? 0
+                        let xpGains = data["xpGains"] as? [[String: Any]] ?? []
+
+                        let filteredXP: Int = {
+                            switch type {
+                            case .allTime:
+                                return allTimeXP
+                            case .weekly:
+                                return xpGains
+                                    .compactMap { entry in
+                                        guard
+                                            let ts = entry["timestamp"] as? Timestamp,
+                                            let xp = entry["xp"] as? Int,
+                                            Calendar.current.isDate(ts.dateValue(), equalTo: Date(), toGranularity: .weekOfYear)
+                                        else { return nil }
+                                        return xp
+                                    }
+                                    .reduce(0, +)
+                            case .monthly:
+                                return xpGains
+                                    .compactMap { entry in
+                                        guard
+                                            let ts = entry["timestamp"] as? Timestamp,
+                                            let xp = entry["xp"] as? Int,
+                                            Calendar.current.isDate(ts.dateValue(), equalTo: Date(), toGranularity: .month)
+                                        else { return nil }
+                                        return xp
+                                    }
+                                    .reduce(0, +)
+                            }
+                        }()
+
                         return AppUser(
                             id: doc.documentID,
                             username: data["username"] as? String ?? "",
                             profileName: data["profileName"] as? String ?? "",
                             level: data["level"] as? Int ?? 1,
-                            xp: data["xp"] as? Int ?? 0,
-                            profilePicURL: data["profilePicURL"] as? String // ✅ new field
+                            xp: filteredXP,
+                            profilePicURL: data["profilePicURL"] as? String
                         )
                     }
-                    .sorted {
-                        if $0.level == $1.level {
-                            return $0.xp > $1.xp
-                        } else {
-                            return $0.level > $1.level
-                        }
-                    }
+                    .sorted { $0.xp > $1.xp }
+
+                    allUsers[type] = processed
                 }
         }
     }
 }
+
 struct LeaderboardRowView: View {
     let user: AppUser
     let rank: Int
@@ -226,5 +248,41 @@ struct LeaderboardRowView: View {
         }
     }
 }
+struct LeaderboardPageView: View {
+    let type: LeaderboardType
+    let users: [AppUser]
+    let isLoading: Bool
+    let currentUserID: String?
 
+    var body: some View {
+        VStack {
+            Text(type.rawValue)
+                .font(.title2)
+                .bold()
+                .foregroundColor(.white)
+                .padding(.top)
 
+            if isLoading {
+                ProgressView("Loading \(type.rawValue)...")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if users.isEmpty {
+                Text("No data available.")
+                    .foregroundColor(.gray)
+                    .padding()
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 12) {
+                        ForEach(users.enumerated().map { $0 }, id: \.element.id) { index, user in
+                            LeaderboardRowView(
+                                user: user,
+                                rank: index + 1,
+                                isCurrentUser: user.id == currentUserID
+                            )
+                        }
+                    }
+                    .padding()
+                }
+            }
+        }
+    }
+}

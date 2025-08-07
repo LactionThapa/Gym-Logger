@@ -64,6 +64,19 @@ class WorkoutStorage: ObservableObject {
         persist()
     }
     
+    func delete(workout: Workout) {
+        guard let userID = Auth.auth().currentUser?.uid else { return }
+
+        db.collection("users")
+            .document(userID)
+            .collection("workouts")
+            .document(workout.id.uuidString)
+            .delete()
+
+        history.removeAll { $0.id == workout.id }
+        persist()
+    }
+    
     private func persist() {
         if let data = try? JSONEncoder().encode(history) {
             UserDefaults.standard.set(data, forKey: key)

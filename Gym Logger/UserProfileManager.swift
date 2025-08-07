@@ -50,8 +50,39 @@ class UserProfileManager: ObservableObject {
             profile.xp -= requiredXPForNextLevel
             profile.level += 1
         }
+        
+        logXPGain(amount)
         save()
     }
+    private func logXPGain(_ amount: Int) {
+        guard let ref = userRef() else { return }
+        let xpEvent: [String: Any] = [
+            "xp": amount,
+            "timestamp": Timestamp(date: Date())
+        ]
+
+        ref.updateData([
+            "xpGains": FieldValue.arrayUnion([xpEvent])
+        ]) { error in
+            if let error = error {
+                print("Failed to log XP gain: \(error.localizedDescription)")
+            }
+        }
+
+        ref.getDocument { snapshot, _ in
+            guard var xpGains = snapshot?.data()?["xpGains"] as? [[String: Any]] else { return }
+
+            let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date())!
+            xpGains = xpGains.filter {
+                guard let ts = $0["timestamp"] as? Timestamp else { return false }
+                return ts.dateValue() >= thirtyDaysAgo
+            }
+
+            ref.updateData(["xpGains": xpGains])
+        }
+
+    }
+
     var currentXPIntoLevel: Int {
         var xpLeft = profile.xp
         var l = 1

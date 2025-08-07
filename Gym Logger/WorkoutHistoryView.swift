@@ -11,6 +11,8 @@ struct WorkoutHistoryView: View {
     @State private var searchText = ""
     @State private var expandedWorkouts: Set<UUID> = []
     @State private var selectedExerciseName: IdentifiableString? = nil
+    @State private var workoutToDelete: Workout? = nil
+    @State private var showDeleteConfirmation = false
 
     var filteredWorkouts: [Workout] {
         guard !searchText.isEmpty else { return workoutStorage.history }
@@ -75,6 +77,15 @@ struct WorkoutHistoryView: View {
                     .presentationDetents([.height(360)]) // Optional: control the popup height
                     .presentationDragIndicator(.visible)
             }
+            .alert("Delete this workout?", isPresented: $showDeleteConfirmation, presenting: workoutToDelete) { workout in
+                Button("Delete", role: .destructive) {
+                    workoutStorage.delete(workout: workout)
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: { _ in
+                Text("This cannot be undone.")
+            }
+
         }
         
     }
@@ -93,6 +104,15 @@ struct WorkoutHistoryView: View {
                 }
 
                 Spacer()
+                
+                Button {
+                    workoutToDelete = workout
+                    showDeleteConfirmation = true
+                } label: {
+                    Image(systemName: "trash")
+                        .foregroundColor(.gray)
+                        .padding(8)
+                }
 
                 Button(action: {
                     if expandedWorkouts.contains(workout.id) {
