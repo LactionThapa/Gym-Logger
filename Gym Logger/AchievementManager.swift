@@ -62,10 +62,13 @@ class AchievementManager: ObservableObject {
 
             var shouldUnlock = false
             switch achievements[i].title {
-                case "First Workout": shouldUnlock = workoutCount >= 1
-                case "5 Workouts":    shouldUnlock = workoutCount >= 5
-                case "10,000 KG Lifted": shouldUnlock = totalWeight >= 10_000
-                default: break
+            case "First Workout": shouldUnlock = workoutCount >= 1
+            case "25 Workouts":    shouldUnlock = workoutCount >= 25
+            case "50 Workouts":    shouldUnlock = workoutCount >= 50
+            case "75 Workouts":    shouldUnlock = workoutCount >= 75
+            case "100 Workouts":    shouldUnlock = workoutCount >= 100
+            case "10,000 KG Lifted": shouldUnlock = totalWeight >= 10_000
+            default: break
             }
 
             if shouldUnlock {
@@ -99,7 +102,10 @@ class AchievementManager: ObservableObject {
     func defaultAchievements() -> [Achievement] {
         return [
             Achievement(id: "firstWorkout", title: "First Workout", description: "Log your first workout.", imageName: "1.circle"),
-            Achievement(id: "fiveWorkouts", title: "5 Workouts", description: "Log 5 workouts.", imageName: "5.circle"),
+            Achievement(id: "25Workouts", title: "25 Workouts", description: "Log 25 workouts.", imageName: "25.circle"),
+            Achievement(id: "50Workouts", title: "50 Workouts", description: "Log 50 workouts.", imageName: "50.circle"),
+            Achievement(id: "75Workouts", title: "75 Workouts", description: "Log 75 workouts.", imageName: "75.circle"),
+            Achievement(id: "100Workouts", title: "100 Workouts", description: "Log 100 workouts.", imageName: "100.circle"),
             Achievement(id: "tenKiloLifted", title: "10,000 KG Lifted", description: "Lift a total of 10,000 kg.", imageName: "scalemass")
         ]
     }

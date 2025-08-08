@@ -14,7 +14,7 @@ struct Achievement: Identifiable, Codable {
         description: String,
         earned: Bool = false,
         dateEarned: Date? = nil,
-        imageName: String
+        imageName: String,
     ) {
         self.id = id
         self.title = title

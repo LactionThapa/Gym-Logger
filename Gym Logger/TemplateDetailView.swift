@@ -143,19 +143,18 @@ struct TemplateDetailView: View {
         .alert("Log this workout?", isPresented: $showConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Log", role: .destructive) {
-                Task {
-                    let workout = Workout(exercises: exercises, templateName: template.name)
-                    workoutStorage.save(workout: workout)
-                    profileManager.addXP(exercises.count * 10)
-                    let updatedTemplate = WorkoutTemplate(id: template.id, name: template.name, exercises: exercises)
-                    templateStorage.updateTemplate(updatedTemplate)
-                    for ex in exercises {
-                        exerciseLibrary.addOrUpdate(ex)
-                    }
-                    await MainActor.run {
-                        dismiss()
-                    }
+                let workout = Workout(exercises: exercises, templateName: template.name)
+                workoutStorage.save(workout: workout)
+                profileManager.addXP(exercises.count * 10)
+
+                let updatedTemplate = WorkoutTemplate(id: template.id, name: template.name, exercises: exercises)
+                templateStorage.updateTemplate(updatedTemplate)
+
+                for ex in exercises {
+                    exerciseLibrary.addOrUpdate(ex)
                 }
+
+                dismiss()
             }
         }
         .onAppear {
