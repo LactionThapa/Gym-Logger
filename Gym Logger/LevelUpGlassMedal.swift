@@ -1,3 +1,4 @@
+import SwiftUI
 struct LevelUpGlassMedal: View {
     let level: Int
     var autoDismissAfter: Double = 2.0

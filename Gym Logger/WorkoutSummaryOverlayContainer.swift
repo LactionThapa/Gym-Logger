@@ -13,40 +13,34 @@ struct WorkoutSummaryOverlayContainer<Content: View>: View {
             content
 
             if let s = summary, visible {
-                // Dim background taps through except the card
-                Color.black.opacity(0.25)
+                // Dimmed backdrop that matches your dark theme
+                Color.black.opacity(0.45)
                     .ignoresSafeArea()
                     .transition(.opacity)
-                    .onTapGesture { dismiss() }
 
-                VStack {
-                    Spacer()
-                    WorkoutSummaryCard(summary: s, onClose: dismiss)
-                        .padding(.horizontal, 16)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                        .shadow(radius: 20)
-                }
-                .zIndex(10)
+                // Centered card
+                WorkoutSummaryCard(summary: s) { dismiss() }
+                    .frame(maxWidth: 360)
+                    .transition(.scale.combined(with: .opacity))
+                    .shadow(color: .black.opacity(0.5), radius: 24, x: 0, y: 12)
             }
         }
         .onReceive(userProfileManager.$lastWorkoutSummary) { newValue in
             guard let newValue else { return }
-            // Present on the next tick to avoid racing with any dismiss()
             DispatchQueue.main.async {
                 summary = newValue
                 withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
                     visible = true
                 }
-                // Auto-dismiss after 3s; tweak as you like
-                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                    dismiss()
-                }
+                // No auto-dismiss; user taps X to close
             }
         }
     }
 
     private func dismiss() {
-        guard visible else { return }
+        let gen = UIImpactFeedbackGenerator(style: .medium)
+        gen.impactOccurred()
+
         withAnimation(.easeInOut(duration: 0.25)) {
             visible = false
         }

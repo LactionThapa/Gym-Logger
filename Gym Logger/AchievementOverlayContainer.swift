@@ -1,3 +1,4 @@
+import SwiftUI
 struct AchievementOverlayContainer<Content: View>: View {
     @EnvironmentObject var achievementManager: AchievementManager
     @State private var showPopup = false

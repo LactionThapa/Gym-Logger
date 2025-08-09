@@ -3,13 +3,22 @@ import FirebaseAuth
 import FirebaseFirestore
 import FirebaseStorage
 import SwiftUI
-
+struct LevelUpEvent: Identifiable, Equatable {
+    let id = UUID()
+    let newLevel: Int
+}
 class UserProfileManager: ObservableObject {
     @Published var profile = UserProfile()
     
     private let db = Firestore.firestore()
     private let storage = Storage.storage()
     private var listener: ListenerRegistration?
+    
+    @Published var leveledUpRecently: LevelUpEvent? = nil
+    
+    
+    @Published var lastWorkoutSummary: WorkoutSummary?
+
     
     var userID: String? {
             Auth.auth().currentUser?.uid
@@ -45,15 +54,32 @@ class UserProfileManager: ObservableObject {
     }
     
     func addXP(_ amount: Int) {
+        let oldLevel = profile.level
+
         profile.xp += amount
         while profile.xp >= requiredXPForNextLevel {
             profile.xp -= requiredXPForNextLevel
             profile.level += 1
         }
-        
+
+        if profile.level > oldLevel {
+            DispatchQueue.main.async {
+                self.leveledUpRecently = LevelUpEvent(newLevel: self.profile.level)
+            }
+        }
+
         logXPGain(amount)
-        save()
+
+        guard let ref = userRef() else { return }
+        ref.updateData([
+            "xp": profile.xp,
+            "level": profile.level
+        ]) { err in
+            if let err = err { print("❌ XP update failed: \(err)") }
+            else { print("✅ XP/level updated (partial write)") }
+        }
     }
+
     private func logXPGain(_ amount: Int) {
         guard let ref = userRef() else { return }
         let xpEvent: [String: Any] = [
@@ -141,7 +167,7 @@ class UserProfileManager: ObservableObject {
             }
         }
     }
-    
+    /*
     func save() {
         guard let ref = userRef() else {
             print("❌ Could not get userRef")
@@ -149,13 +175,42 @@ class UserProfileManager: ObservableObject {
         }
 
         do {
-            try ref.setData(from: profile)
+            try ref.setData(from: profile, merge: true)
             print("✅ Profile saved to Firestore.")
         } catch {
             print("❌ Failed to save profile: \(error.localizedDescription)")
         }
     }
-    
+    */
+    func save() {
+        guard let ref = userRef() else {
+            print("❌ Could not get userRef")
+            return
+        }
+
+        let payload: [String: Any] = [
+            "username": profile.username,
+            "profileName": profile.profileName,
+            "profilePicURL": profile.profilePicURL as Any,
+            "xp": profile.xp,
+            "level": profile.level,
+            "achievements": profile.achievements,
+            "currentStreak": profile.currentStreak,
+            "longestStreak": profile.longestStreak,
+            "lastWorkoutDate": profile.lastWorkoutDate as Any
+        ]
+
+        print("⬆️ Writing payload:", payload)
+
+        ref.setData(payload, merge: true) { error in
+            if let error = error {
+                print("❌ Firestore write error:", error)
+            } else {
+                print("✅ Firestore write OK")
+            }
+        }
+    }
+
     deinit {
         listener?.remove()
     }
@@ -171,5 +226,54 @@ class UserProfileManager: ObservableObject {
     }
     func reset() {
         self.profile = UserProfile() // default empty profile
+    }
+    
+    func updateStreak(_ workoutDate: Date) {
+        guard let ref = userRef() else { return }
+        let cal = Calendar.current
+
+        var current = profile.currentStreak
+        var longest = profile.longestStreak
+
+        if let last = profile.lastWorkoutDate {
+            // If same day, keep streak; still refresh lastWorkoutDate for consistency
+            if !cal.isDate(workoutDate, inSameDayAs: last) {
+                let startLast = cal.startOfDay(for: last)
+                let startNow  = cal.startOfDay(for: workoutDate)
+                let days = cal.dateComponents([.day], from: startLast, to: startNow).day ?? 0
+
+                if days == 1 {
+                    current += 1
+                } else if days > 1 {
+                    current = 1
+                }
+            }
+        } else {
+            // First workout ever
+            current = 1
+            longest = max(longest, current)
+        }
+
+        if current > longest { longest = current }
+
+        // Update local cache
+        profile.currentStreak = current
+        profile.longestStreak = longest
+        profile.lastWorkoutDate = workoutDate
+
+        print("🔥 Streak update only → current=\(current), longest=\(longest), last=\(workoutDate)")
+
+        // **Partial write** so XP/other fields are untouched
+        ref.updateData([
+            "currentStreak": current,
+            "longestStreak": longest,
+            "lastWorkoutDate": Timestamp(date: workoutDate)
+        ]) { err in
+            if let err = err {
+                print("❌ Failed to update streak fields: \(err)")
+            } else {
+                print("✅ Streak fields updated (partial write)")
+            }
+        }
     }
 }

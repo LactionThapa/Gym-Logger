@@ -30,6 +30,19 @@
                             .font(.system(size: 28, weight: .bold))
                             .foregroundColor(.white)
                     }
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "flame.fill")
+                                    .foregroundColor(.orange)
+                                    .shadow(color: .orange, radius: 4)
+                                Text("\(profileManager.profile.currentStreak)")
+                                    .foregroundColor(.white)
+                                    .font(.headline)
+                            }
+                            .padding(6)
+                            .background(Color(hex: "#4A6572"))
+                            .clipShape(Capsule())
+                        }
                 }
                 .background(Color("AppBackground").ignoresSafeArea())
                 .navigationDestination(isPresented: $isEditingActive) { editDestination }
@@ -288,4 +301,3 @@
             }
         }
     }
-

@@ -57,11 +57,6 @@ struct WorkoutHistoryView: View {
                     }
                 }
             }
-            .onAppear {
-                if authManager.isLoggedIn {
-                    workoutStorage.load()
-                }
-            }
             .onChange(of: authManager.user) { _ in
                 if authManager.isAnonymous {
                     workoutStorage.reset()
@@ -87,7 +82,11 @@ struct WorkoutHistoryView: View {
             }
 
         }
-        
+        .background(Color("AppBackground").ignoresSafeArea())
+        .scrollContentBackground(.hidden)
+        .toolbarBackground(Color("AppBackground"), for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
     }
 
     // MARK: - Card View for Each Workout

@@ -1,61 +1,46 @@
 import SwiftUI
 
-struct LevelUpPopup: View {
+struct LevelUpPopUp: View {
     let level: Int
-    var autoDismissAfter: Double = 2.0
+    var autoDismissAfter: Double = 1.8
     let onDismiss: () -> Void
 
-    @State private var isVisible = false
-    @State private var showConfetti = false
+    @State private var scale: CGFloat = 0.7
+    @State private var fade = false
 
     var body: some View {
-        VStack {
-            if isVisible {
+        ZStack {
+            Color.black.opacity(fade ? 0.35 : 0).ignoresSafeArea()
+            VStack(spacing: 14) {
+                SimpleConfettiBurst() // light confetti; implement similar to your ConfettiView
+                    .frame(height: 0)
+
                 ZStack {
-                    if showConfetti {
-                        SimpleConfettiBurst()
-                            .transition(.opacity)
-                            .zIndex(0)
-                    }
-                    HStack(spacing: 12) {
-                        ZStack {
-                            Circle().fill(.ultraThinMaterial).frame(width: 56, height: 56)
-                            Image(systemName: "star.fill").font(.title2)
-                        }
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Level Up!").font(.headline).bold()
-                            Text("You reached level \(level)").font(.subheadline).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Button { dismissNow() } label {
-                            Image(systemName: "xmark").padding(8)
-                        }
-                    }
-                    .padding(14)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
-                    .shadow(radius: 12)
-                    .padding(.horizontal)
+                    Circle().fill(.ultraThinMaterial).frame(width: 120, height: 120)
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 54))
                 }
-                .transition(.move(edge: .top).combined(with: .opacity))
+                .scaleEffect(scale)
+
+                Text("Level \(level)")
+                    .font(.largeTitle.bold())
+                Text("Nice work!").foregroundStyle(.secondary)
             }
-            Spacer()
+            .padding(24)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24))
+            .shadow(radius: 30)
         }
         .onAppear {
             UINotificationFeedbackGenerator().notificationOccurred(.success)
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
-                isVisible = true
-                showConfetti = true
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + autoDismissAfter) { dismissNow() }
+            withAnimation(.easeIn(duration: 0.25)) { fade = true }
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.65)) { scale = 1.0 }
+            DispatchQueue.main.asyncAfter(deadline: .now() + autoDismissAfter) { dismiss() }
         }
     }
 
-    private func dismissNow() {
-        withAnimation(.easeInOut(duration: 0.25)) {
-            isVisible = false
-            showConfetti = false
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.26, execute: onDismiss)
+    private func dismiss() {
+        withAnimation(.easeInOut(duration: 0.2)) { fade = false; scale = 0.8 }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) { onDismiss() }
     }
 }
 
@@ -88,3 +73,4 @@ struct SimpleConfettiBurst: View {
         let color = [Color.yellow, .orange, .pink, .mint, .blue, .purple].randomElement()!
     }
 }
+

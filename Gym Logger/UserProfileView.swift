@@ -11,9 +11,6 @@ struct UserProfileView: View {
     @State private var profileImage: Image? = nil
     @State private var inputImage: UIImage?
     
-    @State private var unlockedAchievement: Achievement? = nil
-    @State private var showPopup: Bool = false
-    
     @State private var showingLogin = false
     @State private var alreadySynced = false
     @Environment(\.presentationMode) var presentationMode
@@ -31,6 +28,8 @@ struct UserProfileView: View {
                         profilePicture
                         
                         xpSection
+                        
+                        streakSection
                         
                         TextField("Enter Name", text: $profileManager.profile.profileName)
                             .font(.title2)
@@ -60,12 +59,6 @@ struct UserProfileView: View {
                     }
                     .padding()
                 }
-
-                // 🏆 Popup when achievement is unlocked
-                if let achievement = unlockedAchievement, showPopup {
-                    AchievementUnlockedView(achievement: achievement, isVisible: $showPopup)
-                        .zIndex(1)
-                }
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -75,6 +68,10 @@ struct UserProfileView: View {
                         .foregroundColor(.white)
                 }
             }
+            .background(Color("AppBackground").ignoresSafeArea())            // 👈 add
+            .toolbarBackground(Color("AppBackground"), for: .navigationBar) // 👈 add
+            .toolbarBackground(.visible, for: .navigationBar)               // 👈 add
+            .toolbarColorScheme(.dark, for: .navigationBar) 
             .sheet(isPresented: $showingImagePicker) {
                 ImagePicker(image: $inputImage)
             }
@@ -84,22 +81,13 @@ struct UserProfileView: View {
             .onChange(of: profileManager.profile.profileName) { newValue in
                 profileManager.updateName(newValue)
             }
-            .onAppear {
-                achievementManager.evaluateAchievements(using: workoutStorage.history) { newAchievement in
-                    unlockedAchievement = newAchievement
-                    withAnimation {
-                        showPopup = true
-                    }
-                    profileManager.unlockAchievement(newAchievement.id)
-                }
-            }
         }
     }
     
     // MARK: - Profile Picture
     private var profilePicture: some View {
         // compute progress safely
-        let current = Double(profileManager.currentXPIntoLevel)
+        let current = Double(profileManager.profile.xp)
         let required = max(Double(profileManager.requiredXPForNextLevel), 1)
         let pct = current / required
 
@@ -144,13 +132,12 @@ struct UserProfileView: View {
             Text("Lv. \(profileManager.profile.level)")
                 .font(.system(size: 20, weight: .bold))
                 .bold()
-            Text("\(profileManager.currentXPIntoLevel) / \(profileManager.requiredXPForNextLevel) XP")
+            Text("\(profileManager.profile.xp) / \(profileManager.requiredXPForNextLevel) XP")
                 .font(.caption2)
                 .foregroundColor(.gray)
         }
     }
     
-    // MARK: - Personal Bests
     // MARK: - Personal Bests
     private var personalBests: some View {
         VStack(spacing: 12) {
@@ -178,7 +165,6 @@ struct UserProfileView: View {
         .cornerRadius(12)
     }
 
-    // MARK: - Achievements
     // MARK: - Achievements (Grid)
     private var achievementsSection: some View {
         VStack(spacing: 12) {
@@ -211,6 +197,25 @@ struct UserProfileView: View {
         return maxMap.map { ($0.key, $0.value) }.sorted { $0.0 < $1.0 }
     }
     
+    private var streakSection: some View {
+            VStack(spacing: 4) {
+                HStack {
+                    Image(systemName: "flame.fill")
+                        .foregroundColor(.orange)
+                    Text("\(profileManager.profile.currentStreak) Day Streak")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                }
+                Text("Longest: \(profileManager.profile.longestStreak) days")
+                    .font(.caption)
+                    .foregroundColor(.gray)
+            }
+            .padding()
+            .background(Color(hex: "#4A6572"))
+            .cornerRadius(12)
+        }
+
+
     private func loadImage() {
         guard let inputImage = inputImage else { return }
         profileImage = Image(uiImage: inputImage)
@@ -240,44 +245,8 @@ struct UserProfileView: View {
     }
 }
 
-struct AchievementUnlockedView: View {
-    let achievement: Achievement
-    @Binding var isVisible: Bool
-    
-    var body: some View {
-        if isVisible {
-            VStack(spacing: 12) {
-                Image(systemName: achievement.imageName)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 60, height: 60)
-                    .foregroundColor(.yellow)
-                
-                Text("Achievement Unlocked!")
-                    .font(.headline)
-                    .bold()
-                
-                Text(achievement.title)
-                    .font(.subheadline)
-                    .padding(.bottom, 10)
-            }
-            .padding()
-            .background(.ultraThinMaterial)
-            .cornerRadius(16)
-            .shadow(radius: 10)
-            .transition(.scale)
-            .onAppear {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                    withAnimation {
-                        isVisible = false
-                    }
-                }
-            }
-        }
-    }
-}
 struct XPRing: View {
-    let targetProgress: Double    // the final value (0.0 ... 1.0)
+    let targetProgress: Double
     let lineWidth: CGFloat = 8
     @State private var displayedProgress: Double = 0 // for animation
 

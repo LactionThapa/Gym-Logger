@@ -4,6 +4,7 @@ import FirebaseFirestore
 
 struct LoginView: View {
     @EnvironmentObject var profileManager: UserProfileManager
+    @EnvironmentObject var achievementManager: AchievementManager
     
     @Environment(\.dismiss) var dismiss
     @State private var email = ""
@@ -138,6 +139,8 @@ struct LoginView: View {
                         // Migrate data
                         migrateData(to: newUID, profile: anonProfileData, workouts: anonWorkouts, templates: anonTemplates)
                         profileManager.fetchUserProfile()
+                        achievementManager.loadAchievements()
+                        
                     }
                 } else {
                     // SIGNUP

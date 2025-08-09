@@ -113,6 +113,7 @@ struct FriendLeaderboardView: View {
                                     .reduce(0, +)
                             }
                         }()
+
                         return AppUser(
                             id: doc.documentID,
                             username: data["username"] as? String ?? "",
@@ -122,8 +123,18 @@ struct FriendLeaderboardView: View {
                             profilePicURL: data["profilePicURL"] as? String
                         )
                     }
-                    .sorted { $0.xp > $1.xp }
-
+                    .sorted {
+                        if type == .allTime {
+                            // Sort by level desc, then XP desc
+                            if $0.level == $1.level {
+                                return $0.xp > $1.xp
+                            }
+                            return $0.level > $1.level
+                        } else {
+                            // Weekly & monthly: sort by XP only
+                            return $0.xp > $1.xp
+                        }
+                    }
                     allUsers[type] = processed
                 }
         }

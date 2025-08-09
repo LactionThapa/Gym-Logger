@@ -1,4 +1,5 @@
 import SwiftUI
+import Foundation
 
 struct TemplateDetailView: View {
     @EnvironmentObject var workoutStorage: WorkoutStorage
@@ -24,6 +25,8 @@ struct TemplateDetailView: View {
     @State private var isTimerRunning = false
     @State private var restTimer: Timer? = nil
     @State private var showingTimePicker = false
+    
+    @State private var performLog = false
 
     enum FocusField: Hashable {
             case weight(UUID)
@@ -143,19 +146,10 @@ struct TemplateDetailView: View {
         .alert("Log this workout?", isPresented: $showConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Log", role: .destructive) {
-                let workout = Workout(exercises: exercises, templateName: template.name)
-                workoutStorage.save(workout: workout)
-                profileManager.addXP(exercises.count * 10)
-
-                let updatedTemplate = WorkoutTemplate(id: template.id, name: template.name, exercises: exercises)
-                templateStorage.updateTemplate(updatedTemplate)
-
-                for ex in exercises {
-                    exerciseLibrary.addOrUpdate(ex)
-                }
-
-                dismiss()
+                showConfirmation = false          // close the alert first
+                performLog = true                 // signal work for next tick
             }
+            
         }
         .onAppear {
             if started {
@@ -210,9 +204,42 @@ struct TemplateDetailView: View {
             }
             .presentationDetents([.height(300)])
         }
+        .onDisappear{if isTimerRunning{ stopTimer()}}
+        //new block
+        .onChange(of: performLog) { shouldLog in
+            guard shouldLog else { return }
+            actuallyLogAndDismiss()
+            performLog = false
+        }
+
     }
+    @MainActor
+    private func actuallyLogAndDismiss() {
+        stopTimer()
+        withTransaction(Transaction(animation: nil)) {
+            let workout = Workout(exercises: exercises, templateName: template.name)
+            workoutStorage.save(workout: workout)
 
+            let (breakdown, totalXP) = xpBreakdownForWorkout(exercises: exercises, basePerSet: 10)
+            profileManager.addXP(totalXP)
 
+            // Publish the summary so the root can show it
+            profileManager.lastWorkoutSummary = WorkoutSummary(
+                templateName: template.name,
+                date: Date(),
+                exercises: breakdown
+            )
+
+            let updated = WorkoutTemplate(id: template.id, name: template.name, exercises: exercises)
+            templateStorage.updateTemplate(updated)
+            exercises.forEach { exerciseLibrary.addOrUpdate($0) }
+        }
+        Task { @MainActor in
+            await Task.yield() // let the alert close before popping
+            dismiss()
+        }
+    }
+    
     // ✅ Extracted helper to simplify the body and avoid compiler issues
     private func exerciseSection(for index: Int) -> some View {
         let exercise = exercises[index]
@@ -244,6 +271,7 @@ struct TemplateDetailView: View {
             .font(.caption)
             .foregroundColor(Color.gray)
             // Set rows
+            
             ForEach(Array(exercises[index].sets.indices), id: \.self) { j in
                 let set = exercises[index].sets[j]
                 let isDone = set.completedReps != nil
@@ -371,5 +399,70 @@ struct TemplateDetailView: View {
             }
         }
     }
+    //Mark :- function for XPworkout
+    private func xpForWorkout(
+        exercises: [Exercise],
+        basePerSet: Int = 10,
+        overTargetBoost: Double = 1.5,   // how fast XP ramps > target
+        maxMultiplier: Double = 2.0,     // hard cap (2× by default)
+        minMultiplier: Double = 0.25     // floor so partial effort still earns
+    ) -> Int {
+        var total = 0
 
+        for ex in exercises {
+            for set in ex.sets {
+                guard let completed = set.completedReps,
+                      set.targetReps > 0 else { continue }
+
+                let ratio = Double(completed) / Double(set.targetReps)
+                let multiplier: Double
+
+                if ratio >= 1.0 {
+                    // Boosted curve for over-target performance
+                    // Example: ratio=1.2 → 1 + 0.2*1.5 = 1.3×
+                    multiplier = min(1.0 + (ratio - 1.0) * overTargetBoost, maxMultiplier)
+                } else {
+                    // Linear below target, with a small floor
+                    multiplier = max(ratio, minMultiplier)
+                }
+
+                total += Int(round(Double(basePerSet) * multiplier))
+            }
+        }
+
+        return total
+    }
+    
+    private func xpBreakdownForWorkout(
+        exercises: [Exercise],
+        basePerSet: Int = 10,
+        overTargetBoost: Double = 1.5,
+        maxMultiplier: Double = 2.0,
+        minMultiplier: Double = 0.25
+    ) -> (breakdown: [ExerciseXPBreakdown], totalXP: Int) {
+        var exBreakdowns: [ExerciseXPBreakdown] = []
+        var total = 0
+
+        for ex in exercises {
+            var setRows: [SetXPBreakdown] = []
+            for (idx, set) in ex.sets.enumerated() {
+                guard let completed = set.completedReps, set.targetReps > 0 else { continue }
+                let ratio = Double(completed) / Double(set.targetReps)
+                let multiplier: Double = (ratio >= 1.0)
+                    ? min(1.0 + (ratio - 1.0) * overTargetBoost, maxMultiplier)
+                    : max(ratio, minMultiplier)
+                let xp = Int(round(Double(basePerSet) * multiplier))
+                total += xp
+                setRows.append(SetXPBreakdown(
+                    index: idx + 1,
+                    target: set.targetReps,
+                    completed: completed,
+                    multiplier: multiplier,
+                    xp: xp
+                ))
+            }
+            exBreakdowns.append(ExerciseXPBreakdown(name: ex.name, weight: ex.weight, sets: setRows))
+        }
+        return (exBreakdowns, total)
+    }
 }

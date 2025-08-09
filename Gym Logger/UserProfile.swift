@@ -7,4 +7,7 @@ struct UserProfile: Codable {
     var xp: Int = 0
     var level: Int = 1
     var achievements: [String] = []
+    var currentStreak: Int = 0
+    var longestStreak: Int = 0
+    var lastWorkoutDate: Date? = nil
 }

@@ -17,6 +17,8 @@ struct FriendsListView: View {
     @State private var sentUserIDs: [String] = []
     @State private var sentUsers: [String: AppUser] = [:] // keyed by userID
     
+    @Environment(\.dismiss) private var dismiss
+    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -187,6 +189,24 @@ struct FriendsListView: View {
                 UserSearchView()
                     .environmentObject(friendManager)
             }
+            .overlay(alignment: .bottom) {
+                Button(action: { dismiss() }) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(.white)
+                        .padding(18)
+                        .background(
+                            Circle()
+                                .fill(Color(hex: "F9AA33")) // nice frosted look; switch to Color.white.opacity(0.12) if you prefer
+                                .overlay(Circle().stroke(Color.white.opacity(0.25), lineWidth: 1))
+                        )
+                        .shadow(color: .black.opacity(0.35), radius: 10, x: 0, y: 6)
+                }
+                // lift it above the Home indicator / sheet grabber
+                .padding(.bottom, 24)
+                .accessibilityLabel("Close")
+            }
+
         }
     }
     private func fetchUsername(for userID: String) {

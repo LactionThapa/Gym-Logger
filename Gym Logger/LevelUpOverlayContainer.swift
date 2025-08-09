@@ -1,3 +1,4 @@
+import SwiftUI
 struct LevelUpOverlayContainer<Content: View>: View {
     @EnvironmentObject var profile: UserProfileManager
     @State private var currentLevel: Int?
@@ -10,7 +11,7 @@ struct LevelUpOverlayContainer<Content: View>: View {
             content
             if let level = currentLevel {
                 VStack {
-                    LevelUpPopup(level: level) {
+                    LevelUpPopUp(level: level) {
                         currentLevel = nil
                         profile.leveledUpRecently = nil
                     }

@@ -7,6 +7,7 @@ struct SidebarView: View {
     @EnvironmentObject var achievementManager: AchievementManager
     @EnvironmentObject var profileManager: UserProfileManager
     @EnvironmentObject var friendManager: FriendManager
+    @EnvironmentObject var workoutStorage: WorkoutStorage
     
     @State private var showLogin = false
     @State private var showProfile = false
@@ -84,7 +85,7 @@ struct SidebarView: View {
                                         )
                                         .frame(
                                             width: geometry.size.width *
-                                            CGFloat(profileManager.currentXPIntoLevel) /
+                                            CGFloat(profileManager.profile.xp) /
                                             CGFloat(max(profileManager.requiredXPForNextLevel, 1)),
                                             height: 8
                                         )
@@ -93,7 +94,7 @@ struct SidebarView: View {
                             }
                             .frame(height: 8)
                             
-                            Text("\(profileManager.currentXPIntoLevel) / \(profileManager.requiredXPForNextLevel) XP")
+                            Text("\(profileManager.profile.xp) / \(profileManager.requiredXPForNextLevel) XP")
                                 .font(.caption2)
                                 .foregroundColor(.gray)
                         }
@@ -145,6 +146,7 @@ struct SidebarView: View {
                                 DispatchQueue.main.async {
                                     profileManager.reset()
                                     achievementManager.reset()
+                                    workoutStorage.reset()
                                 }
                                 Auth.auth().signInAnonymously { result, error in
                                     if let error = error {

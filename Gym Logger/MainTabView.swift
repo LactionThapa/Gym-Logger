@@ -34,32 +34,31 @@ struct MainTabView: View {
                 .tabItem {
                     Label("Leaderboard", systemImage: "trophy.fill")
                 }
-            }.accentColor(Color(hex:"F9AA33"))
-            
-            // 🏆 Achievement Popup
-            if let unlocked = achievementManager.unlockedRecently {
-                AchievementUnlockedView(achievement: unlocked, isVisible: .constant(true))
-                    .transition(.scale)
-                    .onAppear {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                            achievementManager.unlockedRecently = nil
-                        }
-                    }
-                    .zIndex(1)
             }
+            .accentColor(Color(hex: "F9AA33"))
         }
         
     }
     
 }
 
-
 #Preview {
-    MainContainerView()
-        .environmentObject(WorkoutStorage())
+    LevelUpOverlayContainer {
+        AchievementOverlayContainer {
+            WorkoutSummaryOverlayContainer {
+                MainContainerView()
+            }
+        }
+    }
+        .environmentObject(
+            WorkoutStorage(
+                achievementManager: .sharedInstance,
+                profileManager: UserProfileManager()   // inject one so streak code runs
+            )
+        )
         .environmentObject(WorkoutTemplateStorage())
         .environmentObject(ExerciseLibraryStorage())
-        .environmentObject(AchievementManager())
+        .environmentObject(AchievementManager.sharedInstance)
         .environmentObject(UserProfileManager())
         .environmentObject(FriendManager())
         .environmentObject(AuthManager())
