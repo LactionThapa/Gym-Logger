@@ -19,11 +19,40 @@ class WorkoutTemplateStorage: ObservableObject {
         listener?.remove()
     }
     
+    func seedDefaultsOncePerUser() {
+            guard let uid = Auth.auth().currentUser?.uid else { return }
+
+            let userDocRef = db.collection("users").document(uid)
+
+            userDocRef.getDocument { [weak self] snapshot, error in
+                guard let self = self else { return }
+
+                if let error = error {
+                    print("⚠️ Error checking seed flag: \(error)")
+                    return
+                }
+
+                let alreadySeeded = snapshot?.data()?["didSeedTemplates"] as? Bool ?? false
+
+                if alreadySeeded {
+                    print("ℹ️ Templates already seeded for this user.")
+                    return
+                }
+
+                // Seed defaults
+                let defaults = WorkoutTemplate.defaultTemplates()
+                defaults.forEach { self.saveTemplate($0) }
+
+                // Update flag
+                userDocRef.setData(["didSeedTemplates": true], merge: true)
+                print("✅ Default templates seeded & flag set.")
+            }
+        }
+    
     func saveTemplate(_ template: WorkoutTemplate) {
         templates.append(template)
         persistLocally()
         uploadTemplate(template)
-        //saveTemplates()
     }
     
     

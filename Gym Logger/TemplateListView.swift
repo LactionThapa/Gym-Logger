@@ -118,6 +118,10 @@
         private func handleAppear() {
             if authManager.isLoggedIn {
                 templateStorage.fetchTemplates()
+                templateStorage.seedDefaultsOncePerUser()
+            }
+            if authManager.isAnonymous{
+                templateStorage.seedDefaultsOncePerUser()
             }
         }
 
