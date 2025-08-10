@@ -167,21 +167,7 @@ class UserProfileManager: ObservableObject {
             }
         }
     }
-    /*
-    func save() {
-        guard let ref = userRef() else {
-            print("❌ Could not get userRef")
-            return
-        }
 
-        do {
-            try ref.setData(from: profile, merge: true)
-            print("✅ Profile saved to Firestore.")
-        } catch {
-            print("❌ Failed to save profile: \(error.localizedDescription)")
-        }
-    }
-    */
     func save() {
         guard let ref = userRef() else {
             print("❌ Could not get userRef")
@@ -276,4 +262,10 @@ class UserProfileManager: ObservableObject {
             }
         }
     }
+    func setDiscoverable(_ value: Bool) {
+            profile.isDiscoverable = value
+            let uid = Auth.auth().currentUser?.uid ?? ""
+            Firestore.firestore().collection("users").document(uid)
+                .setData(["isDiscoverable": value], merge: true)
+        }
 }

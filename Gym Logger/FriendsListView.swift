@@ -8,6 +8,7 @@ enum FriendsTab: String, CaseIterable {
 
 struct FriendsListView: View {
     @EnvironmentObject var friendManager: FriendManager
+    @EnvironmentObject var profileManager: UserProfileManager
     @State private var selectedTab: FriendsTab = .friends
     @State private var showUserSearch = false
     @State private var usernames: [String: String] = [:]
@@ -34,7 +35,7 @@ struct FriendsListView: View {
                     }
                     .padding(.horizontal)
                     .padding(.top, 8)
-
+                    
                     // Tab Selector
                     Picker("Tab", selection: $selectedTab) {
                         ForEach(FriendsTab.allCases, id: \.self) {
@@ -140,6 +141,21 @@ struct FriendsListView: View {
                         .font(.system(size: 28, weight: .bold)) // Bigger custom font
                         .foregroundColor(.white)
                 }
+                ToolbarItem(placement: .topBarTrailing) {
+                    HStack(spacing: 8) {
+                        Image(systemName: profileManager.profile.isDiscoverable ? "eye" : "eye.slash")
+                            .foregroundColor(Color(hex: "F9AA33"))
+                        Toggle("Discoverable", isOn: Binding(
+                            get: { profileManager.profile.isDiscoverable },
+                            set: { profileManager.setDiscoverable($0) }
+                        ))
+                        .labelsHidden()
+                    }
+                    .padding(8)
+                    .background(
+                        Capsule().fill(Color.white.opacity(0.08))
+                    )
+                }
             }
             .onAppear {
                 friendManager.fetchFriends()
@@ -206,7 +222,7 @@ struct FriendsListView: View {
                 .padding(.bottom, 24)
                 .accessibilityLabel("Close")
             }
-
+            
         }
     }
     private func fetchUsername(for userID: String) {
@@ -439,9 +455,9 @@ struct FriendCountHeader: View {
     let count: Int
     let limit: Int
     var onAddTapped: () -> Void
-
+    
     private let cardBG = Color(red: 35/255, green: 47/255, blue: 52/255) // #232F34
-
+    
     var body: some View {
         ZStack(alignment: .top) {
             // Card
@@ -449,9 +465,9 @@ struct FriendCountHeader: View {
                 Text("Number of friends")
                     .font(.headline)
                     .foregroundColor(.white)
-
+                
                 Spacer()
-
+                
                 // Count chip
                 Text("\(count)/\(limit)")
                     .font(.subheadline.weight(.semibold))
@@ -467,13 +483,13 @@ struct FriendCountHeader: View {
                             )
                             .shadow(color: .black.opacity(0.25), radius: 2, x: 0, y: 1)
                     )
-
+                
                 // Divider
                 Rectangle()
                     .fill(Color.white.opacity(0.15))
                     .frame(width: 1, height: 28)
                     .cornerRadius(1)
-
+                
                 // Add button
                 Button(action: onAddTapped) {
                     Image(systemName: "person.crop.circle.badge.plus")
@@ -492,7 +508,7 @@ struct FriendCountHeader: View {
                     .fill(Color(hex: "4A6572"))
             )
             .shadow(color: .black.opacity(0.35), radius: 12, x: 0, y: 6)
-
+            
             // Thin gradient bar on top edge
             LinearGradient(
                 colors: [.cyan, .green, .yellow],

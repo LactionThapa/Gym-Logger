@@ -10,4 +10,5 @@ struct UserProfile: Codable {
     var currentStreak: Int = 0
     var longestStreak: Int = 0
     var lastWorkoutDate: Date? = nil
+    var isDiscoverable: Bool = true
 }
