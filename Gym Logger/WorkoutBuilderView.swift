@@ -36,7 +36,10 @@ struct WorkoutBuilderView: View {
     @State private var showIncompleteAlert = false
     @State private var showGoBackAlert = false
     
-
+    private var incompleteField : Bool {
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+            !currentExercises.isEmpty
+    }
     
     var body: some View {
         NavigationStack {
@@ -44,7 +47,6 @@ struct WorkoutBuilderView: View {
                 List {
                     Section(header: Text("Template Name")) {
                         TextField("Name", text: $name)
-                            //.foregroundColor(.black)
                     }
 
                     Section(header: Text("Exercises")) {
@@ -88,29 +90,26 @@ struct WorkoutBuilderView: View {
                 .scrollContentBackground(.hidden)
                 .background(Color("AppBackground"))
                 VStack(alignment: .trailing, spacing: 12) {
+                    Button(action: {
+                            if incompleteField {
+                                showIncompleteAlert = true
+                            } else {
+                                saveWorkout()
+                                dismiss()
+                            }
+                        }) {
+                            Label("Save Workout", systemImage: "checkmark.circle.fill")
+                                .padding(.vertical, 10)
+                                .padding(.horizontal, 16)
+                                .background(incompleteField ? Color.green : Color.gray)
+                                .foregroundColor(.white)
+                                .clipShape(Capsule())
+                                .shadow(radius: 4)
+                        }.disabled(!incompleteField)
                     if showActionMenu {
                         Group {
-                            if showMenuButtons[0] {
-                                Button(action: {
-                                    if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
-                                        currentExercises.isEmpty {
-                                        showIncompleteAlert = true
-                                    } else {
-                                        saveWorkout()
-                                        dismiss()
-                                    }
-                                    resetFab()
-                                }) {
-                                    Label("Save Workout", systemImage: "checkmark.circle")
-                                        .padding(8)
-                                        .background(Color.green)
-                                        .foregroundColor(.white)
-                                        .clipShape(Capsule())
-                                }
-                                .transition(.move(edge: .bottom).combined(with: .opacity))
-                            }
                             
-                            if showMenuButtons[1] {
+                            if showMenuButtons[0] {
                                 Button(action: {
                                     showingLibraryPicker = true
                                     showActionMenu = false
@@ -126,7 +125,7 @@ struct WorkoutBuilderView: View {
                                 .transition(.move(edge: .bottom).combined(with: .opacity))
                             }
 
-                            if showMenuButtons[2] {
+                            if showMenuButtons[1] {
                                 Button(action: {
                                     selectedExercise = nil
                                     isCreatingNewExercise = true
@@ -145,14 +144,12 @@ struct WorkoutBuilderView: View {
                             
                         }
                     }
-
-
                         // Main FAB button
                     Button(action: {
                         if showActionMenu {
                             // Hide all buttons instantly
                             withAnimation {
-                                showMenuButtons = [false, false, false]
+                                showMenuButtons = [false, false]
                             }
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                                 showActionMenu = false
@@ -179,7 +176,6 @@ struct WorkoutBuilderView: View {
 
                     }
                     .padding()
-                    //.animation(.spring(response: 0.8, dampingFraction: 0.7), value: showActionMenu)
             }
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarBackButtonHidden(true)
