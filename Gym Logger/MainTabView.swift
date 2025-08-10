@@ -8,6 +8,7 @@ struct MainTabView: View {
     @EnvironmentObject var userProfileManager: UserProfileManager
     @EnvironmentObject var friendManager: FriendManager
     @EnvironmentObject var authManager: AuthManager
+    @EnvironmentObject var avatarManager: AvatarManager
     
     var toggleSidebar: () -> Void
     
@@ -62,4 +63,6 @@ struct MainTabView: View {
         .environmentObject(UserProfileManager())
         .environmentObject(FriendManager())
         .environmentObject(AuthManager())
+        .environmentObject(AvatarManager())
 }
+

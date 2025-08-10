@@ -272,52 +272,19 @@ struct TemplateDetailView: View {
             .foregroundColor(Color.gray)
             // Set rows
             
-            ForEach(Array(exercises[index].sets.indices), id: \.self) { j in
-                let set = exercises[index].sets[j]
-                let isDone = set.completedReps != nil
-
-                HStack {
-                    Button(action: {
-                        exercises[index].sets.remove(at: j)
-                    }) {
-                        Circle()
-                            .strokeBorder(Color(hex: "F9AA33"), lineWidth: 2)
-                            .frame(width: 30, height: 30)
-                            .overlay(
-                                Text("\(j + 1)")
-                                    .font(.caption)
-                                    .foregroundColor(Color(hex: "F9AA33"))
-                            )
-                    }
-                    .buttonStyle(PlainButtonStyle())
-
-                    TextField("Weight", value: $exercises[index].weight, format: .number)
-                        .keyboardType(.decimalPad)
-                        .foregroundColor(isDone ? .gray : .white)
-                        .frame(width: 60)
-                        .disabled(isDone)
-                        .focused($focusedField, equals: .weight(set.id))
-
-                    TextField("Reps", value: $exercises[index].sets[j].targetReps, format: .number)
-                        .keyboardType(.numberPad)
-                        .foregroundColor(isDone ? .gray : .white)
-                        .frame(width: 60)
-                        .disabled(isDone)
-                        .focused($focusedField, equals: .reps(set.id))
-
-                    Spacer()
-
-                    Toggle("", isOn: Binding(
-                        get: { isDone },
-                        set: { isChecked in
-                            exercises[index].sets[j].completedReps = isChecked ? exercises[index].sets[j].targetReps : nil
-                            if isChecked && autoStartTimer {
-                                startTimer()
-                            }
+            ForEach($exercises[index].sets) { $set in
+                SetRowView(
+                    set: $set,
+                    exerciseWeight: $exercises[index].weight,
+                    autoStartTimer: autoStartTimer,
+                    startTimer: startTimer,
+                    deleteAction: {
+                        if let idx = exercises[index].sets.firstIndex(where: { $0.id == set.id }) {
+                            exercises[index].sets.remove(at: idx)
                         }
-                    ))
-                    .labelsHidden()
-                }
+                    },
+                    indexLabel: "\(exercises[index].sets.firstIndex(where: { $0.id == set.id })! + 1)"
+                )
             }
 
             Button(action: {
@@ -464,5 +431,126 @@ struct TemplateDetailView: View {
             exBreakdowns.append(ExerciseXPBreakdown(name: ex.name, weight: ex.weight, sets: setRows))
         }
         return (exBreakdowns, total)
+    }
+}
+
+struct SetRowView: View {
+    @Binding var set: ExerciseSet
+    @Binding var exerciseWeight: Double
+    let autoStartTimer: Bool
+    let startTimer: () -> Void
+    let deleteAction: () -> Void
+    let indexLabel: String
+
+    @State private var repsText: String = ""
+    @FocusState private var repsFocused: Bool
+
+    @State private var weightText: String = ""
+    @FocusState private var weightFocused: Bool
+
+    private var isDone: Bool { self.`set`.completedReps != nil }
+
+    var body: some View {
+        HStack {
+            // Delete
+            Button(action: deleteAction) {
+                Circle()
+                    .strokeBorder(Color(hex: "F9AA33"), lineWidth: 2)
+                    .frame(width: 30, height: 30)
+                    .overlay(Text(indexLabel).font(.caption).foregroundColor(Color(hex: "F9AA33")))
+            }
+            .buttonStyle(.plain)
+
+            // Weight (local text only; don't commit to model until Done)
+            TextField("Weight", text: $weightText)
+                .keyboardType(.decimalPad)
+                .foregroundColor(isDone ? .gray : .white)
+                .frame(width: 60)
+                .disabled(isDone)
+                .focused($weightFocused)
+                .task {
+                    weightText = weightString(exerciseWeight)
+                }
+                .onChange(of: weightText) { newVal in
+                    guard !isDone else { return }
+                    // simple sanitize: numbers and one dot
+                    weightText = sanitizeDecimal(newVal)
+                }
+
+            // Reps (local text only; don't commit to model until Done)
+            TextField("Reps", text: $repsText)
+                .keyboardType(.numberPad)
+                .foregroundColor(isDone ? .gray : .white)
+                .frame(width: 60)
+                .disabled(isDone)
+                .focused($repsFocused)
+                .task {
+                    repsText = String(self.`set`.completedReps ?? self.`set`.targetReps)
+                }
+                .onChange(of: repsText) { newVal in
+                    guard !isDone else { return }
+                    repsText = newVal.filter(\.isNumber) // keep only digits
+                }
+                // keep the display in sync if model changes from elsewhere
+                .onChange(of: set.completedReps) { _ in
+                    if !repsFocused { repsText = String(set.completedReps ?? set.targetReps) }
+                }
+                .onChange(of: set.targetReps) { _ in
+                    if set.completedReps == nil && !repsFocused {
+                        repsText = String(set.targetReps)
+                    }
+                }
+
+            Spacer()
+
+            // Done button (manual commit ONLY)
+            Button {
+                if self.`set`.completedReps == nil {
+                    // Commit both fields now
+                    if let parsedReps = Int(repsText) {
+                        self.`set`.completedReps = parsedReps
+                    } else {
+                        self.`set`.completedReps = self.`set`.targetReps
+                        repsText = String(self.`set`.targetReps)
+                    }
+
+                    if let w = Double(weightText) {
+                        exerciseWeight = w
+                        weightText = weightString(w) // normalize display
+                    } else {
+                        weightText = weightString(exerciseWeight)
+                    }
+
+                    if autoStartTimer { startTimer() }
+                    // Fields will disable because isDone is now true
+                } else {
+                    // Unlock (manual)
+                    self.`set`.completedReps = nil
+                    repsText = String(self.`set`.targetReps)
+                    weightText = weightString(exerciseWeight)
+                }
+            } label: {
+                Image(systemName: isDone ? "checkmark.circle.fill" : "circle")
+                    .imageScale(.large)
+                    .frame(width: 36, height: 36)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: - Helpers
+    private func weightString(_ value: Double) -> String {
+        value == floor(value) ? String(Int(value)) : String(value)
+    }
+
+    private func sanitizeDecimal(_ s: String) -> String {
+        // allow digits and a single dot
+        var out = ""
+        var seenDot = false
+        for ch in s {
+            if ch.isNumber { out.append(ch) }
+            else if ch == "." && !seenDot { out.append(ch); seenDot = true }
+        }
+        return out
     }
 }

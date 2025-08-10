@@ -20,6 +20,7 @@ struct Gym_LoggerApp: App {
     @StateObject private var userProfileManager: UserProfileManager
     @StateObject private var friendManager = FriendManager()
     @StateObject private var authManager = AuthManager()
+    @StateObject private var avatarManager = AvatarManager()
     
     init() {
         if FirebaseApp.app() == nil {
@@ -62,6 +63,7 @@ struct Gym_LoggerApp: App {
             .environmentObject(userProfileManager) // same instance as in WorkoutStorage
             .environmentObject(friendManager)
             .environmentObject(authManager)
+            .environmentObject(avatarManager)
         }
     }
 }

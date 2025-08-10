@@ -12,6 +12,7 @@ struct SidebarView: View {
     @State private var showLogin = false
     @State private var showProfile = false
     @State private var showFriends = false
+    @State private var showAvatar = false
     
     private var pendingCount: Int { friendManager.incomingRequests.count } 
     
@@ -136,6 +137,23 @@ struct SidebarView: View {
                     Spacer()
                 }
                 
+                HStack {
+                    Spacer()
+                    Button {
+                        showAvatar = true
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "person.crop.circle")
+                            Text("Avatar")
+                        }
+                        .frame(maxWidth: .infinity)
+                        .foregroundStyle(.white)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .animation(.spring(response: 0.3, dampingFraction: 0.8))
+                    Spacer()
+                }
+                
                 // MARK: - Auth Buttons
                 if let user = Auth.auth().currentUser, !user.isAnonymous {
                     HStack {
@@ -193,6 +211,7 @@ struct SidebarView: View {
         .fullScreenCover(isPresented: $showLogin) { LoginView{} }
         .sheet(isPresented: $showProfile) { UserProfileView() }
         .sheet(isPresented: $showFriends) { FriendsListView() }
+        .fullScreenCover(isPresented: $showAvatar) { AvatarBuilderView() }
     }
 }
 

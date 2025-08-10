@@ -1,20 +1,19 @@
 import FirebaseAuth
 import FirebaseFirestore
+import SwiftUI
 
-class AvatarManager {
+final class AvatarManager: ObservableObject {
     private let db = Firestore.firestore()
 
     func saveAvatar(_ loadout: AvatarLoadout, completion: @escaping (Error?) -> Void) {
         guard let uid = Auth.auth().currentUser?.uid else {
-            completion(NSError(domain: "", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not logged in"]))
-            return
+            return completion(NSError(domain: "", code: 401,
+              userInfo: [NSLocalizedDescriptionKey: "User not logged in"]))
         }
-
         do {
-            let data = try JSONEncoder().encode(loadout)
-            let dict = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
-
-            db.collection("users").document(uid).setData(["avatarLoadout": dict], merge: true, completion: completion)
+            let dict = try Firestore.Encoder().encode(loadout)
+            db.collection("users").document(uid)
+              .setData(["avatarLoadout": dict], merge: true, completion: completion)
         } catch {
             completion(error)
         }
@@ -22,23 +21,16 @@ class AvatarManager {
 
     func loadAvatar(completion: @escaping (Result<AvatarLoadout, Error>) -> Void) {
         guard let uid = Auth.auth().currentUser?.uid else {
-            completion(.failure(NSError(domain: "", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not logged in"])))
-            return
+            return completion(.failure(NSError(domain: "", code: 401,
+              userInfo: [NSLocalizedDescriptionKey: "User not logged in"])))
         }
-
-        db.collection("users").document(uid).getDocument { snapshot, error in
-            if let error = error {
-                completion(.failure(error))
-                return
+        db.collection("users").document(uid).getDocument { snap, err in
+            if let err = err { return completion(.failure(err)) }
+            guard let map = snap?.data()?["avatarLoadout"] as? [String: Any] else {
+                return completion(.success(AvatarLoadout())) // default if none yet
             }
-            guard let data = snapshot?.data()?["avatarLoadout"] as? [String: Any] else {
-                completion(.failure(NSError(domain: "", code: 404, userInfo: [NSLocalizedDescriptionKey: "No avatar found"])))
-                return
-            }
-
             do {
-                let jsonData = try JSONSerialization.data(withJSONObject: data)
-                let loadout = try JSONDecoder().decode(AvatarLoadout.self, from: jsonData)
+                let loadout = try Firestore.Decoder().decode(AvatarLoadout.self, from: map)
                 completion(.success(loadout))
             } catch {
                 completion(.failure(error))

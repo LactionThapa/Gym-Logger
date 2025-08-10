@@ -22,6 +22,14 @@ extension Color {
             opacity: 1
         )
     }
+    func toHex() -> String? {
+            // quick ‘best effort’ for sRGB colors
+            let ui = UIColor(self)
+            var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+            guard ui.getRed(&r, green: &g, blue: &b, alpha: &a) else { return nil }
+            return String(format:"#%02X%02X%02X%02X",
+                          Int(r*255), Int(g*255), Int(b*255), Int(a*255))
+        }
 }
 import UIKit
 

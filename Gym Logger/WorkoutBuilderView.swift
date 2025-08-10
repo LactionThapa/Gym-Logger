@@ -44,10 +44,8 @@ struct WorkoutBuilderView: View {
                 List {
                     Section(header: Text("Template Name")) {
                         TextField("Name", text: $name)
-                            .foregroundColor(.black)
-                            .shadow(color: Color.black.opacity(0.8), radius: 8, x: 0, y: 4)
+                            //.foregroundColor(.black)
                     }
-                    .foregroundColor(.white)
 
                     Section(header: Text("Exercises")) {
                         ForEach(Array(currentExercises.enumerated()), id: \.element.id) { index, exercise in
