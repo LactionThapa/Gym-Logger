@@ -57,11 +57,11 @@ struct SidebarView: View {
                         }
                         // Text Info and XP
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(profileManager.profile.profileName ?? "Your Name")
+                            Text(profileManager.profile.profileName)
                                 .font(.headline)
                                 .foregroundStyle(.white)
                             
-                            Text("@\(profileManager.profile.username ?? "username")")
+                            Text("@\(profileManager.profile.username)")
                                 .font(.subheadline)
                                 .foregroundColor(.gray)
                             

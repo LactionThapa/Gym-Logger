@@ -91,7 +91,7 @@ struct WorkoutBuilderView: View {
                 .background(Color("AppBackground"))
                 VStack(alignment: .trailing, spacing: 12) {
                     Button(action: {
-                            if incompleteField {
+                            if !incompleteField {
                                 showIncompleteAlert = true
                             } else {
                                 saveWorkout()

@@ -159,7 +159,6 @@ class AchievementManager: ObservableObject {
         ]
     }
 
-
     func reset() {
         self.achievements = self.defaultAchievements()
     }
